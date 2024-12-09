@@ -1,0 +1,38 @@
+{
+    "title": "LocalTuyaIR Remote Control",
+    "config": {
+        "abort": {
+            "already_configured": "Integration for this device is already configured.",
+            "unknown": "Unknown error, please check logs."
+        },
+        "error": {
+            "cannot_connect": "Cannot connect to the device. Verify that address, device id, local key and protocol version are correct.",
+            "no_control_type": "Can't detect control type. Maybe the device is not supported, sorry.",
+            "tuya_not_found": "No Tuya devices found. You can try to enter the IP address and device ID manually."
+        },
+        "step": {
+            "pre_scan": {
+                "title": "LocalTuyaIR Remote Control",
+                "description": "Hello. This integration will allow you use your Tuya universal remote control device with Home Assistant locally, without the need for the Tuya cloud. Now we need to find your device on the network. It can take up to 30 seconds."
+            },
+            "scan": {
+                "title": "Select IP address of your Tuya Remote Control device",
+                "description": "Please select the IP address of your Tuya Remote Control device or choose '...' to enter the IP address manually.",
+                "data": {
+                    "host": "Host"
+                }
+            },
+            "config": {
+                "title": "Configure your Tuya Remote Control device",
+                "description": "Please enter the IP address, device ID and local key of your Tuya Remote Control device. Check the documentation for more information.",
+                "data": {
+                    "name": "Device name",
+                    "host": "Host",
+                    "device_id": "Device ID",
+                    "local_key": "Local key",
+                    "protocol_version": "Protocol Version"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,14 @@
+{
+  "domain": "localtuya_rc",
+  "name": "LocalTuyaIR Remote Control",
+  "codeowners": [
+    "@clusterm"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "",
+  "iot_class": "local_polling",
+  "issue_tracker": "",
+  "requirements": ["tinytuya"],
+  "version": "1.0"
+}
