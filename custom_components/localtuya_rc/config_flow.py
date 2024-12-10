@@ -10,7 +10,6 @@ from .const import (
     DEFAULT_FRIENDLY_NAME,
     CONF_LOCAL_KEY,
     CONF_PROTOCOL_VERSION,
-    CONF_CONTROL_TYPE,
     CONF_CLOUD_INFO
 )
 
@@ -183,7 +182,6 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if "Error" not in status:
                     self.config[CONF_PROTOCOL_VERSION] = version
                     break
-            self.config[CONF_CONTROL_TYPE] = device.control_type
             if not self.config[CONF_PROTOCOL_VERSION]:
                 errors["base"] = "cannot_connect"
                 _LOGGER.error(f"Cannot connect to device using any protocol version")

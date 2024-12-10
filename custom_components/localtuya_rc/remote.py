@@ -11,7 +11,6 @@ from .const import (
     DEFAULT_FRIENDLY_NAME,
     CONF_LOCAL_KEY,
     CONF_PROTOCOL_VERSION,
-    CONF_CONTROL_TYPE,
     CONF_CLOUD_INFO,
     CODE_STORAGE_VERSION,
     CODE_STORAGE_CODES,
@@ -50,8 +49,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             vol.Required(CONF_LOCAL_KEY): cv.string,
             vol.Required(CONF_PROTOCOL_VERSION, default="3.3"): vol.In(
                 ["3.1", "3.2", "3.3", "3.4", "3.5"]
-            ),
-            vol.Required(CONF_CONTROL_TYPE, default=0): cv.positive_int,
+            )
     }
 )
 
@@ -73,13 +71,12 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     host = config.get(CONF_HOST)
     local_key = config.get(CONF_LOCAL_KEY)
     protocol_version = config.get(CONF_PROTOCOL_VERSION)
-    control_type = config.get(CONF_CONTROL_TYPE, 0)
     cloud_info = config.get(CONF_CLOUD_INFO, None)
     
     if name is None or host is None or dev_id is None or local_key is None:
         return
 
-    remote = TuyaRC(name, dev_id, host, local_key, protocol_version, control_type, cloud_info)
+    remote = TuyaRC(name, dev_id, host, local_key, protocol_version, cloud_info)
     # Update availability of the device
     await hass.async_add_executor_job(remote._update_availibility)
 
@@ -87,13 +84,12 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 class TuyaRC(RemoteEntity):
-    def __init__(self, name, dev_id, address, local_key, protocol_version, control_type, cloud_info=None):
+    def __init__(self, name, dev_id, address, local_key, protocol_version, cloud_info=None):
         self._name = name
         self._dev_id = dev_id
         self._address = address
         self._local_key = local_key
         self._protocol_version = protocol_version
-        self._control_type = control_type
         self._cloud_info = cloud_info
         
         self._storage = None
@@ -106,10 +102,7 @@ class TuyaRC(RemoteEntity):
     def _init(self):
         if self._device:
             return
-        self._device = Contrib.IRRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version), control_type=self._control_type)
-        if not self._control_type:
-            # Store auto-detected control type
-            self._control_type = self._device.control_type
+        self._device = Contrib.IRRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version))
 
     def _deinit(self):
         if self._device:
@@ -145,9 +138,7 @@ class TuyaRC(RemoteEntity):
         return DeviceInfo(
             name=self._name,
             manufacturer="Tuya",
-            identifiers={
-                (DOMAIN, self._dev_id)
-            },
+            identifiers={(DOMAIN, self._dev_id)},
             connections={(DOMAIN, self._cloud_info['mac'])} if self._cloud_info and 'mac' in self._cloud_info else set(),
             model=self._cloud_info['model'] if self._cloud_info and 'model' in self._cloud_info else None,
             serial_number=self._cloud_info['sn'] if self._cloud_info and 'sn' in self._cloud_info else None,
@@ -159,7 +150,8 @@ class TuyaRC(RemoteEntity):
         extra = self._cloud_info.copy() if self._cloud_info else {}
         # Add some extra attributes
         extra['protocol_version'] = self._protocol_version
-        extra['control_type'] = self._control_type
+        if self._device:
+            extra['control_type'] = self._device.control_type
         extra['learned_commands'] = str({device: str(list(commands.keys())) for device, commands in self._codes.items()})
         return extra
 
