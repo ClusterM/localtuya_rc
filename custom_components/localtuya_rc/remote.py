@@ -81,7 +81,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     remote = TuyaRC(name, dev_id, host, local_key, protocol_version, control_type, cloud_info)
     # Update availability of the device
-    await hass.async_add_executor_job(remote.update)
+    await hass.async_add_executor_job(remote._update_availibility)
 
     async_add_entities([remote])
 
@@ -121,6 +121,10 @@ class TuyaRC(RemoteEntity):
         return self._available
 
     @property
+    def state(self):
+        return 'online' if self._available else 'offline'
+
+    @property
     def name(self):
         return self._name
 
@@ -156,6 +160,7 @@ class TuyaRC(RemoteEntity):
         # Add some extra attributes
         extra['protocol_version'] = self._protocol_version
         extra['control_type'] = self._control_type
+        extra['learned_commands'] = str({device: str(list(commands.keys())) for device, commands in self._codes.items()})
         return extra
 
     @property
@@ -193,17 +198,24 @@ class TuyaRC(RemoteEntity):
         """Turn the device off."""
         raise HomeAssistantError("Turning off is not supported for this device.")
 
-    def update(self):
-        """Update the device."""
+    def _update_availibility(self):
         with self._lock:
             try:
                 self._init()
-                self._device.status()
-                self._available = True
+                status = self._device.status()
+                self._available = status and not "Error" in status
+                if not self._available:
+                    _LOGGER.error("Device is not available, status: %s", status)
             except Exception as e:
                 self._available = False
-                self._deinit()
                 _LOGGER.error("Failed to update device, exception %s: %s", type(e), e, exc_info=True)
+            if not self._available:
+                self._deinit()
+
+    async def async_update(self):
+        """Update the device."""
+        await self.hass.async_add_executor_job(self._update_availibility)
+        await self._async_load_storage_files()
 
     async def async_send_command(self, command, **kwargs):
         """Send a list of commands to a device."""
@@ -285,7 +297,8 @@ class TuyaRC(RemoteEntity):
             if device:
                 await self._async_load_storage_files()
                 self._codes.setdefault(device, {}).update({command: decoded})
-                await self._storage.async_save(self._codes)                
+                await self._storage.async_save(self._codes)
+                self.schedule_update_ha_state() # Update device attributes
                 msg = f'Successfully learned command "<b>{command}</b>" for device "<b>{device}</b>", code:\r\n<pre>{decoded}</pre>' + \
                     "\n\nNow you can use this device identifier and command name in your automations and scripts with the 'remote.send_command' service. Example:" + \
                     f'<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  device: {device}\n  command: {command}</pre>' + \
