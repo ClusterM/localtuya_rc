@@ -122,10 +122,6 @@ class TuyaRC(RemoteEntity):
         return self._name
 
     @property
-    def icon(self):
-        return "mdi:remote"
-
-    @property
     def unique_id(self):
         return self._dev_id
 
@@ -148,6 +144,9 @@ class TuyaRC(RemoteEntity):
     def extra_state_attributes(self):
         # Make copy of self._cloud_info
         extra = self._cloud_info.copy() if self._cloud_info else {}
+        if 'icon' in extra:
+            extra['icon_url'] = extra['icon']
+            del extra['icon']
         # Add some extra attributes
         extra['protocol_version'] = self._protocol_version
         if self._device:
