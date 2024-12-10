@@ -71,7 +71,13 @@ This integration creates a new "remote.*" entity for your IR remote controller. 
 ### Learn new commands (how to get button codes)
 
 To learn new commands, call the `remote.learn_command` service and pass the entity_id of your remote controller. You can do it from the Developer Tools. You must specify a `command` parameter with the name of the command you want to learn. 
-You can make integration to remember the button code by passing a `device` parameter. If you don't pass it, the button code will be shown in the notification only. After calling the service, you will receive a notification which asks you to press the button on your real remote controller. When you press the button, the button code will be shown in the notification with some additional instructions.
+You can make integration to remember the button code by passing a `device` parameter. If you don't pass it, the button code will be shown in the notification only.
+
+![image](https://github.com/user-attachments/assets/055d5bdd-7f35-4df0-9554-f00791a11b81)
+
+After calling the service, you will receive a notification which asks you to press the button on your real remote controller. When you press the button, the button code will be shown in the notification with some additional instructions.
+
+![image](https://github.com/user-attachments/assets/6fdd7928-86cb-4f3c-9c95-8bab40e708d9)
 
 ### Send commands
 
