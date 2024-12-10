@@ -107,6 +107,9 @@ class TuyaRC(RemoteEntity):
         if self._device:
             return
         self._device = Contrib.IRRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version), control_type=self._control_type)
+        if not self._control_type:
+            # Store auto-detected control type
+            self._control_type = self._device.control_type
 
     def _deinit(self):
         if self._device:
@@ -152,7 +155,7 @@ class TuyaRC(RemoteEntity):
         extra = self._cloud_info.copy() if self._cloud_info else {}
         # Add some extra attributes
         extra['protocol_version'] = self._protocol_version
-        extra['control_type'] = self._control_type        
+        extra['control_type'] = self._control_type
         return extra
 
     @property
