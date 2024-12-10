@@ -1,7 +1,9 @@
 # LocalTuyaIR Remote Control integration for Home Assistant
 
-Many users rely on the "LocalTuya" integration for Home Assistant to control Tuya-based devices locally, without the need for a cloud connection.
+Many users rely on the [LocalTuya](https://github.com/rospogrigio/localtuya) integration for Home Assistant to control Tuya-based devices locally, without the need for a cloud connection.
 However, this popular integration does not offer support for IR remote controller emulators, leaving a significant gap for those who wish to seamlessly integrate Wi-Fi-based IR remote emulators into their smart home setup.
+
+![image](https://github.com/user-attachments/assets/a7f441d4-75b2-4a68-aadd-288f4f013149)
 
 This integration is designed specifically to address that limitation. It provides full local control of Tuya Wi-Fi IR remote controller emulators within Home Assistant, entirely bypassing the Tuya cloud. By doing so, it ensures:
 * Local Control: No external cloud services required. All communication stays within your local network, improving reliability and responsiveness.
