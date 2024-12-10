@@ -6,31 +6,51 @@
             "unknown": "Unknown error, please check logs."
         },
         "error": {
-            "cannot_connect": "Cannot connect to the device. Verify that address, device id, local key and protocol version are correct.",
+            "cannot_connect": "Cannot connect to the device. Verify that address, device id and local key are correct.",
             "no_control_type": "Can't detect control type. Maybe the device is not supported, sorry.",
-            "tuya_not_found": "No Tuya devices found. You can try to enter the IP address and device ID manually."
+            "tuya_not_found": "No Tuya devices found. Make sure that it's online and connected to the same network.",
+            "cloud_error": "Error while connecting to the Tuya cloud. Please check your configuration.",
+            "cloud_unauthorized": "Unauthorized to access the Tuya cloud. Please check your configuration: API key and API secret.",
+            "cloud_no_devices": "No Tuya devices found in the cloud. Please check your configuration, make sure that you linked the correct account and selected the correct region.",
+            "unknown": "Unknown error, please check logs."
         },
         "step": {
-            "pre_scan": {
+            "method": {
                 "title": "LocalTuyaIR Remote Control",
-                "description": "Hello. This integration will allow you use your Tuya universal remote control device with Home Assistant locally, without the need for the Tuya cloud. Now we need to find your device on the network. It can take up to 30 seconds."
+                "description": "This integration will allow you use your Tuya universal remote control device with Home Assistant locally, without the need for the Tuya cloud.\n\nTo access your Tuya Remote Control device, we need to know its local encryption key. This step can be a bit tricky, so please see the documentation for more information.\n\nPlease select the method you want to use to configure your Tuya Remote Control device.",
+                "menu_options": {
+                    "cloud": "Obtain the local key using the Tuya Cloud API",
+                    "pre_scan": "Enter the local key manually"
+                }
+            },
+            "cloud": {
+                "title": "Tuya Cloud API",
+                "description": "To obtain the local key, we need to connect to the Tuya cloud. Please enter your Tuya Cloud API Client ID and Client Secret. Check the documentation for more information.",
+                "data": {
+                    "region": "Region",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "pre_scan": {
+                "title": "Network scan",
+                "description": "Now we need to find your device on the network. It can take up to 30 seconds."
             },
             "scan": {
-                "title": "Select IP address of your Tuya Remote Control device",
-                "description": "Please select the IP address of your Tuya Remote Control device or choose '...' to enter the IP address manually.",
+                "title": "Select device",
+                "description": "Please select the IP address of your Tuya Remote Control device.",
                 "data": {
-                    "host": "Host"
+                    "host": "Device IP address"
                 }
             },
             "config": {
                 "title": "Configure your Tuya Remote Control device",
-                "description": "Please enter the IP address, device ID and local key of your Tuya Remote Control device. Check the documentation for more information.",
+                "description": "Please enter the IP address, device ID and local key of your Tuya Remote Control device.",
                 "data": {
                     "name": "Device name",
                     "host": "Host",
                     "device_id": "Device ID",
-                    "local_key": "Local key",
-                    "protocol_version": "Protocol Version"
+                    "local_key": "Local key"
                 }
             }
         }

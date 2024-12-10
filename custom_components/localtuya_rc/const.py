@@ -7,6 +7,13 @@ NOTIFICATION_TITLE = "Tuya IR Remote Control"
 CONF_LOCAL_KEY = "local_key"
 CONF_PROTOCOL_VERSION = "protocol_version"
 CONF_CONTROL_TYPE = "control_type"
+CONF_CLOUD_INFO = "cloud_info"
+
+
+CONF_SERIAL_NUMBER = "serial_number"
+CONF_PRODUCT_CATEGORY = "product_category"
+CONF_PRODUCT_NAME = "product_name"
+CONF_PRODUCT_ID = "product_id"
 
 CODE_STORAGE_VERSION = 1
 CODE_STORAGE_CODES = f"{DOMAIN}_codes"

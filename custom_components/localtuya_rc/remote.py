@@ -5,15 +5,14 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from tinytuya import Contrib
 import threading
-from datetime import timedelta
 
-from .rc_encoder import rc_auto_encode, rc_auto_decode
 from .const import (
     DOMAIN,
     DEFAULT_FRIENDLY_NAME,
     CONF_LOCAL_KEY,
     CONF_PROTOCOL_VERSION,
     CONF_CONTROL_TYPE,
+    CONF_CLOUD_INFO,
     CODE_STORAGE_VERSION,
     CODE_STORAGE_CODES,
     NOTIFICATION_TITLE
@@ -37,8 +36,10 @@ from homeassistant.components.remote import (
     RemoteEntityFeature,
 )
 from homeassistant.helpers.storage import Store
-from homeassistant.helpers.dispatcher import (async_dispatcher_connect,
-                                              dispatcher_send)
+from homeassistant.helpers.dispatcher import (async_dispatcher_connect)
+
+from .rc_encoder import rc_auto_encode, rc_auto_decode
+
 DISPATCHER_UPDATE = "update"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -59,21 +60,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities, discovery_info=None):
     """Set up the Tuya IR Remote Control entry."""
-    name = entry.data.get(CONF_NAME, DEFAULT_FRIENDLY_NAME)
-    dev_id = entry.data.get(CONF_DEVICE_ID)
-    host = entry.data.get(CONF_HOST)
-    local_key = entry.data.get(CONF_LOCAL_KEY)
-    protocol_version = entry.data.get(CONF_PROTOCOL_VERSION)
-    control_type = entry.data.get(CONF_CONTROL_TYPE)
-    
-    _LOGGER.debug(f"Setting up {DEFAULT_FRIENDLY_NAME} via entry: name={name}, dev_id={dev_id}, host={host}, local_key={local_key}, protocol_version={protocol_version}, control_type={control_type}")
-    
-    if name is None or host is None or dev_id is None or local_key is None:
-        return
-
-    remote = TuyaRC(name, dev_id, host, local_key, protocol_version, control_type)
-
-    async_add_entities([remote])
+    await async_setup_platform(hass, entry.data, async_add_entities, discovery_info)
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -86,26 +73,29 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     host = config.get(CONF_HOST)
     local_key = config.get(CONF_LOCAL_KEY)
     protocol_version = config.get(CONF_PROTOCOL_VERSION)
-    control_type = config.get(CONF_CONTROL_TYPE)
+    control_type = config.get(CONF_CONTROL_TYPE, 0)
+    cloud_info = config.get(CONF_CLOUD_INFO, None)
     
-    _LOGGER.debug(f"Setting up {DEFAULT_FRIENDLY_NAME} via platform: name={name}, dev_id={dev_id}, host={host}, local_key={local_key}, protocol_version={protocol_version}, control_type={control_type}")
-
     if name is None or host is None or dev_id is None or local_key is None:
         return
 
-    remote = TuyaRC(name, dev_id, host, local_key, protocol_version, control_type)
+    remote = TuyaRC(name, dev_id, host, local_key, protocol_version, control_type, cloud_info)
+    # Update availability of the device
+    await hass.async_add_executor_job(remote.update)
 
     async_add_entities([remote])
 
 
 class TuyaRC(RemoteEntity):
-    def __init__(self, name, dev_id, address, local_key, protocol_version, control_type):
+    def __init__(self, name, dev_id, address, local_key, protocol_version, control_type, cloud_info=None):
         self._name = name
         self._dev_id = dev_id
         self._address = address
         self._local_key = local_key
         self._protocol_version = protocol_version
         self._control_type = control_type
+        self._cloud_info = cloud_info
+        
         self._storage = None
         self._codes = {}
         self._available = False
@@ -116,23 +106,24 @@ class TuyaRC(RemoteEntity):
     def _init(self):
         if self._device:
             return
-        _LOGGER.debug(f"Initializing device {self.entity_id}")
         self._device = Contrib.IRRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version), control_type=self._control_type)
 
     def _deinit(self):
         if self._device:
-            _LOGGER.debug(f"Deinitializing device {self.entity_id}")
             self._device.close()
             self._device = None
 
     @property
     def available(self):
-        _LOGGER.debug(f"available {self.entity_id}")
         return self._available
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def icon(self):
+        return "mdi:remote"
 
     @property
     def unique_id(self):
@@ -144,23 +135,31 @@ class TuyaRC(RemoteEntity):
 
     @property
     def device_info(self):
-        _LOGGER.debug(f"device_info requested")
         return DeviceInfo(
             name=self._name,
             manufacturer="Tuya",
             identifiers={
                 (DOMAIN, self._dev_id)
             },
-            # sw_version=self._protocol_version,
-            # hw_version=self._control_type,
+            connections={(DOMAIN, self._cloud_info['mac'])} if self._cloud_info and 'mac' in self._cloud_info else set(),
+            model=self._cloud_info['model'] if self._cloud_info and 'model' in self._cloud_info else None,
+            serial_number=self._cloud_info['sn'] if self._cloud_info and 'sn' in self._cloud_info else None,
         )
+
+    @property
+    def extra_state_attributes(self):
+        # Make copy of self._cloud_info
+        extra = self._cloud_info.copy() if self._cloud_info else {}
+        # Add some extra attributes
+        extra['protocol_version'] = self._protocol_version
+        extra['control_type'] = self._control_type        
+        return extra
 
     @property
     def supported_features(self):
         return RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
 
     async def async_added_to_hass(self):
-        _LOGGER.debug(f"async_added_to_hass {self.entity_id}")
         self.async_on_remove(async_dispatcher_connect(self.hass, DISPATCHER_UPDATE, self._deinit))
 
     def _receive_button(self, timeout):
@@ -193,22 +192,18 @@ class TuyaRC(RemoteEntity):
 
     def update(self):
         """Update the device."""
-        _LOGGER.debug(f"Updating device {self.entity_id}")
         with self._lock:
             try:
                 self._init()
                 self._device.status()
                 self._available = True
-                _LOGGER.debug(f"Device {self.entity_id} is available.")
             except Exception as e:
                 self._available = False
                 self._deinit()
-                _LOGGER.error(f"Failed to update device, exception {type(e)}: {e}", exc_info=True)
+                _LOGGER.error("Failed to update device, exception %s: %s", type(e), e, exc_info=True)
 
     async def async_send_command(self, command, **kwargs):
         """Send a list of commands to a device."""
-        _LOGGER.debug(f"async_send_command, command={command}, kwargs={kwargs}")
-        
         device = kwargs.get(ATTR_DEVICE, None)
         repeat = kwargs.get(ATTR_NUM_REPEATS, 1)
         repeat_delay = kwargs.get(ATTR_DELAY_SECS, 0)
@@ -227,22 +222,21 @@ class TuyaRC(RemoteEntity):
                         if not cmd in self._codes[device]:
                             raise KeyError(f"Command '{cmd}' not found in the codes storage for device '{device}'.")
                         code = self._codes[device][cmd]
-                        _LOGGER.debug(f"Sending command '{cmd}' for device '{device}', code: {code}")
+                        _LOGGER.debug("Sending command '%s' for device '%s', code: %s", cmd, device, code)
                     else:
                         code = cmd
-                        _LOGGER.debug(f"Sending command, code: '{code}'")
+                        _LOGGER.debug("Sending command, code: '%s'", code)
                     pulses = rc_auto_encode(code)
-                    _LOGGER.debug(f"Command pulses: {pulses}")
+                    _LOGGER.debug("Command pulses: %s", pulses)
                     await self.hass.async_add_executor_job(self._send_button, pulses)
                     if n < repeat - 1 and repeat_delay > 0:
                         await asyncio.sleep(repeat_delay)
         except Exception as e:
-            _LOGGER.error(f"Failed to send command, exception {type(e)}: {e}", exc_info=True)
+            _LOGGER.error("Failed to send command, exception %s: %s", type(e), e, exc_info=True)
             raise HomeAssistantError(str(e))
 
     async def async_learn_command(self, **kwargs):
         """Learn a command to a device, or just show the received command code."""
-        _LOGGER.debug(f"async_learn_command, kwargs={kwargs}")
         device = kwargs.get(ATTR_DEVICE, None)
         commands = kwargs.get(ATTR_COMMAND, [])
         command_type = kwargs.get(ATTR_COMMAND_TYPE, "ir")
@@ -269,7 +263,7 @@ class TuyaRC(RemoteEntity):
             
             _LOGGER.debug(f"Waiting for button press...")
             button = await self.hass.async_add_executor_job(self._receive_button, timeout)
-            _LOGGER.debug(f"Button pressed ({type(button)}): {button}")
+            _LOGGER.debug("Button pressed: %s", button)
             if button == None: raise TimeoutError("Timeout. Please try again.")
             if isinstance(button, dict) and "Error" in button:
                 self._deinit()
@@ -309,7 +303,7 @@ class TuyaRC(RemoteEntity):
                 notification_id=notification_id,
             )
         except Exception as e:
-            _LOGGER.error(f"Failed to learn command, exception {type(e)}: {e}", exc_info=True)
+            _LOGGER.error("Failed to learn command, exception %s: %s", type(e), e, exc_info=True)
             async_create(
                 self.hass,
                 f'Cannot learn command "{command}": {e}',
@@ -320,7 +314,6 @@ class TuyaRC(RemoteEntity):
 
     async def async_delete_command(self, **kwargs):
         """Delete a command from a device."""
-        _LOGGER.debug(f"async_delete_command, kwargs={kwargs}")
         device = kwargs.get(ATTR_DEVICE, None)
         commands = kwargs.get(ATTR_COMMAND, [])
         
