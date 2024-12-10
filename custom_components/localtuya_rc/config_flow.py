@@ -99,7 +99,6 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_pre_scan(self, user_input=None, errors={}):
         """Handle the pre-scan step."""
-        errors = {}
         if user_input is not None:
             return await self.async_step_scan()
         return self.async_show_form(

@@ -8,7 +8,7 @@
         "error": {
             "cannot_connect": "Cannot connect to the device. Verify that address, device id and local key are correct.",
             "no_control_type": "Can't detect control type. Maybe the device is not supported, sorry.",
-            "tuya_not_found": "No Tuya devices found. Make sure that it's online and connected to the same network.",
+            "tuya_not_found": "No Tuya devices found. Make sure that it's online and connected to the same network and try again.",
             "cloud_error": "Error while connecting to the Tuya cloud. Please check your configuration.",
             "cloud_unauthorized": "Unauthorized to access the Tuya cloud. Please check your configuration: API key and API secret.",
             "cloud_no_devices": "No Tuya devices found in the cloud. Please check your configuration, make sure that you linked the correct account and selected the correct region.",
