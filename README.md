@@ -7,6 +7,7 @@ This integration is designed specifically to address that limitation. It provide
 * Local Control: No external cloud services required. All communication stays within your local network, improving reliability and responsiveness.
 * Flexible IR Control: Seamlessly integrate Wi-Fi-based IR remote emulators from Tuya, enabling you to automate and manage various IR-controlled devices — such as TVs, air conditioners, and audio systems — directly through Home Assistant.
 
+
 ## Integration setup
 
 Just like other Tuya devices controlled locally, you’ll need to obtain the device’s “local key” (the encryption key) to manage the IR remote emulator without relying on the cloud. You can provide this key manually if you already know it, or let the setup wizard guide you through the process of retrieving it via the Tuya API. Unfortunately, this still requires you to create a developer account at iot.tuya.com and link it to your existing Tuya account. Once linked, the integration can use your API credentials (Access ID and Access Secret) to automatically fetch the local key.
@@ -64,6 +65,7 @@ If you don’t have the local key at hand, the setup wizard can retrieve it for 
 
 * If everything is correct, the integration will find your device on the local network and fill all the necessary information for you. Just click "Submit" and you're done!
 
+
 ## How to use
 
 This integration creates a new "remote.*" entity for your IR remote controller. But "Remote" entities are not directly controllable. You must use the `remote.send_command` service to send IR commands to your device and `remote.learn_command` service to learn new commands (read button codes from your remote). So, you can create scripts, automations, or even use the `remote.send_command` service directly from the Developer Tools to control your IR devices.
@@ -78,6 +80,8 @@ You can make integration to remember the button code by passing a `device` param
 After calling the service, you will receive a notification which asks you to press the button on your real remote controller. Point your remote controller at the IR receiver of your Wi-Fi IR remote emulator and press the button you want to learn. If the learning process is successful, you will receive a notification with the button code with some additional instructions.
 
 ![image](https://github.com/user-attachments/assets/6fdd7928-86cb-4f3c-9c95-8bab40e708d9)
+
+This integration tries to decode the button code using different IR protocols. If it fails, you will receive a notification with the raw button code. See below for more information on how to format IR codes.
 
 Please note that this Tuya device is a crappy one (at least my one) and it may require multiple attempts to learn a command. Sometimes it may not work at all until you restart the device. If you have any issues with learning commands, please try to restart the device and try again.
 
@@ -102,9 +106,84 @@ data:
   command: nec:addr=0xde,cmd=0xed
 ```
 
+
+## IR Code Formatting
+
+When defining IR commands for the Tuya IR remote emulator in Home Assistant, each code is represented as a single string. This string encodes the precise details of the IR command you want to send—either as a sequence of low-level raw timing values or by referencing a known IR protocol with corresponding parameters.
+
+Because different devices and remotes may use various encoding schemes and timing, this flexible format ensures you can accurately represent a broad range of commands. Whether you’re dealing with a fully supported protocol like NEC or need to reproduce a custom signal captured from an unusual remote, these strings give you the necessary control and versatility.
+
+Below are the two main formats you can use, along with details on how to specify parameters and numerical values.
+
+### Raw Timing Format
+
+The raw format allows you to directly specify the sequence of pulses and gaps as a list of timing values, measured in microseconds (or another timing unit depending on your configuration). This is useful when no known protocol fits your device, or if you have already captured the IR pattern and simply need to replay it.
+
+```
+raw:9000,4500,560,560,560,1690,560,1690,560
+```
+
+In this example, the comma-separated list of numbers represents the duration of each pulse or gap in the IR signal. The first number is the duration of the first pulse, the second number is the duration of the first gap, and so on. The values are in pairs, with the first number representing the pulse duration and the second number representing the gap duration.
+
+### Protocol-Based Format
+
+If your device uses a known IR protocol (like NEC, RC5, RC6, etc.), you can define the code using the protocol’s name followed by a series of key-value parameters. This approach is cleaner and more readable, and it leverages standard IR timing and data structures.
+
+Example (NEC Protocol):
+```
+nec:addr=0x25,cmd=0x1E
+```
+Here, `addr` and `cmd` represent the address and command bytes defined by the NEC protocol. By using a recognized protocol, the integration takes care of the underlying timing details, making it easier to specify and understand the command.
+
+For both raw and protocol-based formats, you can specify numeric values in either decimal or hexadecimal form. Hexadecimal values are prefixed with `0x`.
+
+### Supported IR Protocols and Parameters
+
+Below is a list of supported IR protocols with brief descriptions to help you choose the one suitable for your device.
+
+#### NEC Protocols
+
+- **nec**: The standard NEC protocol using a 32-bit code, widely used in consumer electronics. Requires parameters `addr` (address) and `cmd` (command).
+
+- **nec-ext**: An extended version of the NEC protocol with a 32-bit code and a different structure for address and command. Also requires parameters `addr` and `cmd`.
+
+- **nec42**: A 42-bit variant of the NEC protocol, providing a larger address range. Parameters: `addr` and `cmd`.
+
+- **nec42-ext**: An extended version of the 42-bit NEC protocol for devices requiring additional address space. Requires `addr` and `cmd`.
+
+#### RC Protocols
+
+- **rc5**: The RC5 protocol is used in Philips devices and some other brands. Requires parameters `addr` and `cmd`, as well as an optional `toggle` parameter.
+
+- **rc6**: An improved version of RC5, the RC6 protocol supports higher data transmission rates and more commands. Necessary parameters: `addr` and `cmd`. The `toggle` parameter is optional.
+
+The `toggle` parameter can be 0 or 1 and is optional. It helps to distinguish between repeated commands. By default, the integration toggles the `toggle` parameter automatically.
+
+#### Sony SIRC Protocols
+
+- **sirc**: The standard Sony Infrared Remote Control (SIRC) protocol, usually using 12 bits. Requires `addr` and `cmd`.
+
+- **sirc15**: The 15-bit variant of the SIRC protocol, providing more commands. Parameters: `addr` and `cmd`.
+
+- **sirc20**: The 20-bit version of the SIRC protocol for devices with extended address and command space. Requires `addr` and `cmd`.
+
+#### Other Protocols
+
+- **samsung32**: Used in Samsung devices, this 32-bit protocol requires `addr` and `cmd`.
+
+- **kaseikyo**: A complex protocol used by Panasonic and other companies, requires parameters `vendor_id`, `genre1`, `genre2`, `data`, and `id`.
+
+- **rca**: The RCA protocol used in RCA brand devices. Requires `addr` and `cmd`.
+
+- **pioneer**: Used in Pioneer devices, this protocol requires `addr` and `cmd`.
+
+- **ac**: Some air conditioners use this protocol (at least Gorenie and MDV). Usually 16-bit command contains 4-bit mode, 4-bit fan speed, 4-bit temperature and some other bits. Requires `addr` and `cmd`.
+
+
 ## Credits
 
 * This integration is based on the TinyTuya https://github.com/jasonacox/tinytuya by Jason Cox
+
 
 ## Donate
 
