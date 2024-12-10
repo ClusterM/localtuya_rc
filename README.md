@@ -75,9 +75,11 @@ You can make integration to remember the button code by passing a `device` param
 
 ![image](https://github.com/user-attachments/assets/055d5bdd-7f35-4df0-9554-f00791a11b81)
 
-After calling the service, you will receive a notification which asks you to press the button on your real remote controller. When you press the button, the button code will be shown in the notification with some additional instructions.
+After calling the service, you will receive a notification which asks you to press the button on your real remote controller. Point your remote controller at the IR receiver of your Wi-Fi IR remote emulator and press the button you want to learn. If the learning process is successful, you will receive a notification with the button code with some additional instructions.
 
 ![image](https://github.com/user-attachments/assets/6fdd7928-86cb-4f3c-9c95-8bab40e708d9)
+
+Please note that this Tuya device is a crappy one (at least my one) and it may require multiple attempts to learn a command. Sometimes it may not work at all until you restart the device. If you have any issues with learning commands, please try to restart the device and try again.
 
 ### Send commands
 
@@ -99,3 +101,14 @@ data:
   entity_id: remote.my_remote
   command: nec:addr=0xde,cmd=0xed
 ```
+
+## Credits
+
+* This integration is based on the TinyTuya https://github.com/jasonacox/tinytuya by Jason Cox
+
+## Donate
+
+* [Become a sponsor on GitHub](https://github.com/sponsors/ClusterM)
+* [Buy Me A Coffee](https://www.buymeacoffee.com/cluster)
+* [Donation Alerts](https://www.donationalerts.com/r/clustermeerkat)
+* [Boosty](https://boosty.to/cluster)
