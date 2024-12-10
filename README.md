@@ -12,9 +12,11 @@ This integration is designed specifically to address that limitation. It provide
 Just like other Tuya devices controlled locally, you’ll need to obtain the device’s “local key” (the encryption key) to manage the IR remote emulator without relying on the cloud. You can provide this key manually if you already know it, or let the setup wizard guide you through the process of retrieving it via the Tuya API. Unfortunately, this still requires you to create a developer account at iot.tuya.com and link it to your existing Tuya account. Once linked, the integration can use your API credentials (Access ID and Access Secret) to automatically fetch the local key.
 
 ### Providing the Local Key Manually
+
 If you have already obtained the local key for your IR remote device through other means, simply select "Enter the local key manually" and follow the prompts to input the key during the integration setup.
 
 ### Automated Retrieval via Tuya API
+
 If you don’t have the local key at hand, the setup wizard can retrieve it for you — but you must supply the necessary Tuya API credentials. Here’s what you need to do:
 * Add your Tuya IR remote emulator device to the Tuya Smart or Smart Life app ([for Android](https://play.google.com/store/apps/details?id=com.tuya.smartlife) or [for iOS](https://apps.apple.com/us/app/smart-life-smart-living/id1115101477)). Yes, you need to do it even if you want to control it locally.
 * Create a Tuya IoT Developer Account at [iot.tuya.com](https://iot.tuya.com) and log in to access the Tuya IoT Platform dashboard.
@@ -60,4 +62,34 @@ If you don’t have the local key at hand, the setup wizard can retrieve it for 
 
   ![image](https://github.com/user-attachments/assets/c28ac38f-2154-496c-8fd9-2c0b8f3b4ab1)
 
+* If everything is correct, the integration will find your device on the local network and fill all the necessary information for you. Just click "Submit" and you're done!
 
+## How to use
+
+This integration creates a new "remote.*" entity for your IR remote controller. But "Remote" entities are not directly controllable. You must use the `remote.send_command` service to send IR commands to your device and `remote.learn_command` service to learn new commands (read button codes from your remote). So, you can create scripts, automations, or even use the `remote.send_command` service directly from the Developer Tools to control your IR devices.
+
+### Learn new commands (how to get button codes)
+
+To learn new commands, call the `remote.learn_command` service and pass the entity_id of your remote controller. You can do it from the Developer Tools. You must specify a `command` parameter with the name of the command you want to learn. 
+You can make integration to remember the button code by passing a `device` parameter. If you don't pass it, the button code will be shown in the notification only. After calling the service, you will receive a notification which asks you to press the button on your real remote controller. When you press the button, the button code will be shown in the notification with some additional instructions.
+
+### Send commands
+
+To send commands, call the `remote.send_command` service and pass the entity_id of your remote controller. You can use it in scripts and automations. Of course, you can try it from the Developer Tools as well. There are two methods to send commands: specifying a name of the previously learned command or passing a button code. To send a command by name, you must specify a `device` parameter with the name of the device you specified during learning:
+
+```yaml
+service: remote.send_command
+data:
+  entity_id: remote.my_remote
+  command: Power
+  device: TV
+```
+
+To send a command by button code, just pass the `command` parameter with the button code:
+
+```yaml
+service: remote.send_command
+data:
+  entity_id: remote.my_remote
+  command: nec:addr=0xde,cmd=0xed
+```

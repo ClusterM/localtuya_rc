@@ -6,9 +6,9 @@
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "",
+  "documentation": "https://github.com/ClusterM/localtuya_rc/blob/master/README.md",
   "iot_class": "local_polling",
-  "issue_tracker": "",
+  "issue_tracker": "https://github.com/ClusterM/localtuya_rc/issues",
   "requirements": ["tinytuya"],
   "version": "1.0"
 }
