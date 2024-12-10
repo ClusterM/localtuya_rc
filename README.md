@@ -5,7 +5,7 @@ However, this popular integration does not offer support for IR remote controlle
 
 This integration is designed specifically to address that limitation. It provides full local control of Tuya Wi-Fi IR remote controller emulators within Home Assistant, entirely bypassing the Tuya cloud. By doing so, it ensures:
 * Local Control: No external cloud services required. All communication stays within your local network, improving reliability and responsiveness.
-* Flexible IR Control: Seamlessly integrate Wi-Fi-based IR remote emulators from Tuya, enabling you to automate and manage various IR-controlled devices—such as TVs, air conditioners, and audio systems—directly through Home Assistant.
+* Flexible IR Control: Seamlessly integrate Wi-Fi-based IR remote emulators from Tuya, enabling you to automate and manage various IR-controlled devices — such as TVs, air conditioners, and audio systems — directly through Home Assistant.
 
 ## Integration setup
 
@@ -57,4 +57,7 @@ If you don’t have the local key at hand, the setup wizard can retrieve it for 
   You can check the 'Devices' tab to see if your device is listed.
 
 * Now, you have your Tuya API credentials. Go to the Home Assistant integration setup and select "Obtain the local key using the Tuya Cloud API". Enter your **Client ID** and **Client Secret** and select the data center you chose earlier.
+
+  ![image](https://github.com/user-attachments/assets/c28ac38f-2154-496c-8fd9-2c0b8f3b4ab1)
+
 
