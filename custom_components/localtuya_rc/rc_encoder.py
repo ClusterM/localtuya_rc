@@ -58,6 +58,10 @@ def nec_decode(values):
 def nec_encode(addr, cmd):
     # Encode 32-bit NEC
     # NEC standard format: low-addr, ~low-addr, low-cmd, ~low-cmd
+    if not (0x00 <= addr <= 0xFF):
+        raise ValueError("Address must be in range 0x00-0xFF")
+    if not (0x00 <= cmd <= 0xFF):
+        raise ValueError("Command must be in range 0x00-0xFF")
     data = [addr & 0xFF, addr ^ 0xFF, cmd & 0xFF, cmd ^ 0xFF]
     return pulse.distance_encode(data, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1)
 
@@ -70,6 +74,10 @@ def nec_ext_decode(values):
 
 def nec_ext_encode(addr, cmd):
     # Encode 32-bit NEC
+    if not (0x0000 <= addr <= 0xFFFF):
+        raise ValueError("Address must be in range 0x0000-0xFFFF")
+    if not (0x0000 <= cmd <= 0xFFFF):
+        raise ValueError("Command must be in range 0x0000-0xFFFF")
     data = [addr & 0xFF, addr >> 8, cmd & 0xFF, cmd >> 8]
     return pulse.distance_encode(data, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1)
 
@@ -119,6 +127,10 @@ def nec42_encode(addr, cmd):
     #   command: 8 bits
     #   address_inverse = ~address & 0x1FFF
     #   command_inverse = ~command & 0xFF
+    if not (0x0000 <= addr <= 0x1FFF):
+        raise ValueError("Address must be in range 0x0000-0x1FFF")
+    if not (0x00 <= cmd <= 0xFF):
+        raise ValueError("Command must be in range 0x00-0xFF")
     address = addr & 0x1FFF
     address_inv = (~address) & 0x1FFF
     command = cmd & 0xFF
@@ -178,6 +190,10 @@ def nec42_ext_encode(addr, cmd):
     #
     # Here we assume `addr` and `cmd` are the full extended values
     # So we break them down as per extended format:
+    if not (0x000000 <= addr <= 0x3FFFFFF):
+        raise ValueError("Address must be in range 0x000000-0x3FFFFFF")
+    if not (0x0000 <= cmd <= 0xFFFF):
+        raise ValueError("Command must be in range 0x0000-0xFFFF")
     address = addr & 0x1FFF
     address_inv = (addr >> 13) & 0x1FFF
     command = cmd & 0xFF
@@ -218,6 +234,10 @@ def samsung32_decode(pulsts):
 def samsung32_encode(addr, cmd):
     # Encode Samsung format
     # Samsung format: addr, addr, cmd, ~cmd
+    if not (0x00 <= addr <= 0xFF):
+        raise ValueError("Address must be in range 0x00-0xFF")
+    if not (0x00 <= cmd <= 0xFF):
+        raise ValueError("Command must be in range 0x00-0xFF")
     data = [addr, addr, cmd, cmd ^ 0xFF]
     return pulse.distance_encode(data, SAMSUNG_LEADING_PULSE, SAMSUNG_LEADING_GAP, SAMSUNG_PULSE, SAMSUNG_GAP_0, SAMSUNG_GAP_1)
 
@@ -240,9 +260,16 @@ def rc6_decode(values):
     cmd = ((data[1] & 0b111) << 5) | (data[2] >> 3)
     return f"addr=0x{addr:02X},cmd=0x{cmd:02X}"
 
-def rc6_encode(addr, cmd, mode=0, toggle=None):
+def rc6_encode(addr, cmd, toggle=None):
+    # Encode RC6
+    # RC6 format: 1-bit start, 3-bit mode (field), 1-bit toggle, 8-bit address, 8-bit command
+    if not (0x00 <= addr <= 0xFF):
+        raise ValueError("Address must be in range 0x00-0xFF")
+    if not (0x00 <= cmd <= 0xFF):
+        raise ValueError("Command must be in range 0x00-0xFF")
     if toggle is None:
         toggle = get_toggle()
+    mode = 0
     values = [1 << 7 | (mode & 0b111) << 4 | toggle << 3 | (addr >> 5), (addr & 0x1F) << 3 | (cmd >> 5), (cmd & 0x1F) << 3]
     return manchester.encode(values, RC6_T, 21, RC6_START, phase=True, double_bits=[4], msb_first=True)
 
@@ -264,9 +291,13 @@ def rc5_decode(values):
 
 def rc5_encode(addr, cmd, toggle=None):
     # Encode RC5
+    # Field bit (inverted 6th cmd bit for RC5X) + toggle bit + 5-bit address + 6-bit command
+    if not (0x00 <= addr <= 0x1F):
+        raise ValueError("Address must be in range 0x00-0x1F")
+    if not (0x00 <= cmd <= 0x7F):
+        raise ValueError("Command must be in range 0x00-0x7F")
     if toggle is None:
         toggle = get_toggle()
-    # Field bit (inverted 6th cmd bit for RC5X) + toggle bit + 5-bit address + 6-bit command
     values = [
                 # I'm C programmer, you know :)
                 (((cmd << 1) & 0x80) ^ 0x80)
@@ -294,6 +325,10 @@ def sirc_decode(values):
 
 def sirc_encode(addr, cmd):
     # Encode Sony SIRC (12-bit = 5-bit address + 7-bit command)
+    if not (0x00 <= addr <= 0x1F):
+        raise ValueError("Address must be in range 0x00-0x1F")
+    if not (0x00 <= cmd <= 0x7F):
+        raise ValueError("Command must be in range 0x00-0x7F")
     data = [(cmd & 0b1111111) | ((addr & 1) << 7), (addr >> 1) & 0b1111]
     return pulse.width_encode(data, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP, SIRC_PULSE_0, SIRC_PULSE_1, 12)
 
@@ -306,6 +341,10 @@ def sirc15_decode(values):
 
 def sirc15_encode(addr, cmd):
     # Encode Sony SIRC (15-bit = 8-bit address + 7-bit command)
+    if not (0x00 <= addr <= 0xFF):
+        raise ValueError("Address must be in range 0x00-0xFF")
+    if not (0x00 <= cmd <= 0x7F):
+        raise ValueError("Command must be in range 0x00-0x7F")
     data = [(cmd & 0b1111111) | ((addr & 1) << 7), (addr >> 1)]
     return pulse.width_encode(data, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP, SIRC_PULSE_0, SIRC_PULSE_1, 15)
 
@@ -318,6 +357,10 @@ def sirc20_decode(values):
 
 def sirc20_encode(addr, cmd):
     # Encode Sony SIRC (20-bit = 13-bit address + 7-bit command)
+    if not (0x0000 <= addr <= 0x1FFF):
+        raise ValueError("Address must be in range 0x0000-0x1FFF")
+    if not (0x00 <= cmd <= 0x7F):
+        raise ValueError("Command must be in range 0x00-0x7F")
     data = [(cmd & 0b1111111) | ((addr & 1) << 7), (addr >> 1) & 0xFF, (addr >> 9) & 0b1111]
     return pulse.width_encode(data, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP, SIRC_PULSE_0, SIRC_PULSE_1, 20)
 
@@ -363,6 +406,17 @@ def kaseikyo_decode(values):
 
 def kaseikyo_encode(vendor_id, genre1, genre2, data, id):
     # Encode Kaseikyo
+    # Kaseikyo format: vendor_id (16 bits), vendor_parity (4 bits), genre1 (4 bits), genre2 (4 bits), data (12 bits), id (2 bits), parity (8 bits)
+    if not (0x0000 <= vendor_id <= 0xFFFF):
+        raise ValueError("Vendor ID must be in range 0x0000-0xFFFF")
+    if not (0x0 <= genre1 <= 0xF):
+        raise ValueError("Genre1 must be in range 0x0-0xF")
+    if not (0x0 <= genre2 <= 0xF):
+        raise ValueError("Genre2 must be in range 0x0-0xF")
+    if not (0x000 <= data <= 0xFFF):
+        raise ValueError("Data must be in range 0x000-0xFFF")
+    if not (0x0 <= id <= 0x3):
+        raise ValueError("ID must be in range 0x0-0x3")
     output = [
         vendor_id & 0xFF,
         vendor_id >> 8
@@ -393,6 +447,10 @@ def rca_decode(values):
 def rca_encode(addr, cmd):
     # Encode RCA
     # RCA format: 4-bit address, 8-bit command
+    if not (0x00 <= addr <= 0x0F):
+        raise ValueError("Address must be in range 0x00-0x0F")
+    if not (0x00 <= cmd <= 0xFF):
+        raise ValueError("Command must be in range 0x00-0xFF")
     data = [(addr & 0b1111) | ((cmd & 0b1111) << 4), (cmd >> 4)]
     return pulse.distance_encode(data, RCA_LEADING_PULSE, RCA_LEADING_GAP, RCA_PULSE, RCA_GAP_0, RCA_GAP_1, 12)
 
@@ -416,6 +474,10 @@ def pioneer_decode(values):
 def pioneer_encode(addr, cmd):
     # Encode Pioneer
     # Pioneer format: 8-bit address, 8-bit command
+    if not (0x00 <= addr <= 0xFF):
+        raise ValueError("Address must be in range 0x00-0xFF")
+    if not (0x00 <= cmd <= 0xFF):
+        raise ValueError("Command must be in range 0x00-0xFF")
     data = [addr, addr ^ 0xFF, cmd, cmd ^ 0xFF, 0]
     return pulse.distance_encode(data, PIONEER_LEADING_PULSE, PIONEER_LEADING_GAP, PIONEER_PULSE, PIONEER_GAP_0, PIONEER_GAP_1, 33)
 
@@ -451,6 +513,10 @@ def air_conditioner_decode(values):
     return f"addr=0x{addr:02X},cmd=0x{cmd:04X},double={double}"
 
 def air_conditioner_encode(addr, cmd, double=0):
+    if not (0x00 <= addr <= 0xFF):
+        raise ValueError("Address must be in range 0x00-0xFF")
+    if not (0x0000 <= cmd <= 0xFFFF):
+        raise ValueError("Command must be in range 0x0000-0xFFFF")
     data = [addr, addr ^ 0xFF, cmd & 0xFF, cmd & 0xFF ^ 0xFF, cmd >> 8, cmd >> 8 ^ 0xFF]
     v = pulse.distance_encode(data, AC_LEADING_PULSE, AC_LEADING_GAP, AC_PULSE, AC_GAP_0, AC_GAP_1, 48)
     if double:
