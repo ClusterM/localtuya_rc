@@ -1,18 +1,16 @@
 # LocalTuyaIR Remote Control integration for Home Assistant
 
-Many users rely on the [LocalTuya](https://github.com/rospogrigio/localtuya) integration for Home Assistant to control Tuya-based devices locally, without the need for a cloud connection.
-However, this popular integration does not offer support for IR remote controller emulators, leaving a significant gap for those who wish to seamlessly integrate Wi-Fi-based IR remote emulators into their smart home setup.
+Many users rely on the [LocalTuya](https://github.com/rospogrigio/localtuya) integration for Home Assistant to control Tuya-based devices locally, without relying on cloud services. However, this popular integration currently does not support IR remote controller emulators. As a result, those wishing to integrate Tuya’s Wi-Fi-based IR remote emulators into their smart home environment are left without a straightforward solution.
 
 ![image](https://github.com/user-attachments/assets/a7f441d4-75b2-4a68-aadd-288f4f013149)
 
-This integration is designed specifically to address that limitation. It provides full local control of Tuya Wi-Fi IR remote controller emulators within Home Assistant, entirely bypassing the Tuya cloud. By doing so, it ensures:
-* Local Control: No external cloud services required. All communication stays within your local network, improving reliability and responsiveness.
-* Flexible IR Control: Seamlessly integrate Wi-Fi-based IR remote emulators from Tuya, enabling you to automate and manage various IR-controlled devices — such as TVs, air conditioners, and audio systems — directly through Home Assistant.
-
+This integration addresses that gap. It provides full local control of Tuya Wi-Fi IR remote controllers within Home Assistant, entirely bypassing the Tuya cloud. By doing so, you gain:
+* Local Control: No external cloud services required. All communication remains within your local network, improving reliability and responsiveness.
+* Flexible IR Control: Seamlessly integrate Wi-Fi-based IR remote emulators from Tuya, enabling you to manage a wide range of IR-controlled devices—such as TVs, air conditioners, and audio systems—directly from Home Assistant.
 
 ## Integration setup
 
-Just like other Tuya devices controlled locally, you’ll need to obtain the device’s “local key” (the encryption key) to manage the IR remote emulator without relying on the cloud. You can provide this key manually if you already know it, or let the setup wizard guide you through the process of retrieving it via the Tuya API. Unfortunately, this still requires you to create a developer account at iot.tuya.com and link it to your existing Tuya account. Once linked, the integration can use your API credentials (Access ID and Access Secret) to automatically fetch the local key.
+Just like other Tuya devices controlled locally, you’ll need to obtain the device’s “local key” (the encryption key) to manage the IR remote emulator without relying on the cloud. If you already know the local key, you can provide it manually. Otherwise, let the setup wizard guide you through retrieving it via the Tuya API. Unfortunately, this still requires creating a developer account at iot.tuya.com and linking it to your existing Tuya account. After linking, the integration uses your API credentials (Access ID and Access Secret) to automatically fetch the local key.
 
 ### Providing the Local Key Manually
 
@@ -155,7 +153,7 @@ Below is a list of supported IR protocols with brief descriptions to help you ch
 
 #### RC Protocols
 
-- **rc5**: The RC5 protocol is used in Philips devices and some other brands. Requires parameters `addr` and `cmd`, as well as an optional `toggle` parameter.
+- **rc5**: The RC5 protocol is used in Philips devices and some other brands. Requires parameters `addr` and `cmd`, as well as an optional `toggle` parameter. RC5X is a variant of RC5 with a different toggle bit, it's supported and used for `cmd >= 64` (toggle bit is used as the 7th bit).
 
 - **rc6**: An improved version of RC5, the RC6 protocol supports higher data transmission rates and more commands. Necessary parameters: `addr` and `cmd`. The `toggle` parameter is optional.
 
