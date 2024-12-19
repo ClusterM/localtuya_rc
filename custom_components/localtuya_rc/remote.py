@@ -12,12 +12,17 @@ from .const import (
     CONF_LOCAL_KEY,
     CONF_PROTOCOL_VERSION,
     CONF_CLOUD_INFO,
+    CONF_PERSISTENT_CONNECTION,
     CODE_STORAGE_VERSION,
     CODE_STORAGE_CODES,
-    NOTIFICATION_TITLE
+    NOTIFICATION_TITLE,
 )
 
-from homeassistant.const import CONF_NAME, CONF_HOST, CONF_DEVICE_ID
+from homeassistant.const import (
+    CONF_NAME,
+    CONF_HOST,
+    CONF_DEVICE_ID
+)
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.components.persistent_notification import async_create
@@ -35,11 +40,8 @@ from homeassistant.components.remote import (
     RemoteEntityFeature,
 )
 from homeassistant.helpers.storage import Store
-from homeassistant.helpers.dispatcher import (async_dispatcher_connect)
 
 from .rc_encoder import rc_auto_encode, rc_auto_decode
-
-DISPATCHER_UPDATE = "update"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -49,7 +51,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             vol.Required(CONF_LOCAL_KEY): cv.string,
             vol.Required(CONF_PROTOCOL_VERSION, default="3.3"): vol.In(
                 ["3.1", "3.2", "3.3", "3.4", "3.5"]
-            )
+            ),
+            vol.Required(CONF_PERSISTENT_CONNECTION, default=True): cv.boolean,
     }
 )
 
@@ -72,11 +75,14 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     local_key = config.get(CONF_LOCAL_KEY)
     protocol_version = config.get(CONF_PROTOCOL_VERSION)
     cloud_info = config.get(CONF_CLOUD_INFO, None)
-    
+    persistent_connection = config.get(CONF_PERSISTENT_CONNECTION, True)
+
     if name is None or host is None or dev_id is None or local_key is None:
         return
 
-    remote = TuyaRC(name, dev_id, host, local_key, protocol_version, cloud_info)
+    _LOGGER.debug("Setting up Tuya IR Remote Control: name=%s, dev_id=%s, host=%s, local_key=%s, protocol_version=%s, persistent_connection=%s, cloud_info=%s", name, dev_id, host, local_key, protocol_version, persistent_connection, cloud_info)
+
+    remote = TuyaRC(name, dev_id, host, local_key, protocol_version, persistent_connection, cloud_info)
     # Update availability of the device
     await hass.async_add_executor_job(remote._update_availibility)
 
@@ -84,12 +90,13 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 class TuyaRC(RemoteEntity):
-    def __init__(self, name, dev_id, address, local_key, protocol_version, cloud_info=None):
+    def __init__(self, name, dev_id, address, local_key, protocol_version, persistent_connection=True, cloud_info=None):
         self._name = name
         self._dev_id = dev_id
         self._address = address
         self._local_key = local_key
         self._protocol_version = protocol_version
+        self._persistent_connection = persistent_connection
         self._cloud_info = cloud_info
         
         self._storage = None
@@ -102,7 +109,7 @@ class TuyaRC(RemoteEntity):
     def _init(self):
         if self._device:
             return
-        self._device = Contrib.IRRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version))
+        self._device = Contrib.IRRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version), persist=self._persistent_connection)
 
     def _deinit(self):
         if self._device:
@@ -158,8 +165,9 @@ class TuyaRC(RemoteEntity):
     def supported_features(self):
         return RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
 
-    async def async_added_to_hass(self):
-        self.async_on_remove(async_dispatcher_connect(self.hass, DISPATCHER_UPDATE, self._deinit))
+    async def async_will_remove_from_hass(self):
+        _LOGGER.debug("Removing device %s from Home Assistant...", self._dev_id)
+        self._deinit()
 
     def _receive_button(self, timeout):
         with self._lock:
@@ -191,6 +199,7 @@ class TuyaRC(RemoteEntity):
 
     def _update_availibility(self):
         with self._lock:
+            _LOGGER.debug("Updating device %s availibility...", self._dev_id)
             try:
                 self._init()
                 status = self._device.status()
@@ -202,6 +211,7 @@ class TuyaRC(RemoteEntity):
                 _LOGGER.error("Failed to update device, exception %s: %s", type(e), e, exc_info=True)
             if not self._available:
                 self._deinit()
+            _LOGGER.debug("Device %s is available: %s", self._dev_id, self._available)
 
     async def async_update(self):
         """Update the device."""

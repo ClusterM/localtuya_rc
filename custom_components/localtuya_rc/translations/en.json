@@ -2,7 +2,7 @@
     "title": "LocalTuyaIR Remote Control",
     "config": {
         "abort": {
-            "already_configured": "Integration for this device is already configured.",
+            "already_configured": "Error: integration for this device is already configured.",
             "unknown": "Unknown error, please check logs."
         },
         "error": {
@@ -50,7 +50,18 @@
                     "name": "Device name",
                     "host": "Host",
                     "device_id": "Device ID",
-                    "local_key": "Local key"
+                    "local_key": "Local key",
+                    "persistent_connection": "Persistent connection (faster but exclusive)"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Configure your Tuya Remote Control device",
+                "data": {
+                    "persistent_connection": "Persistent connection (faster but exclusive)"
                 }
             }
         }

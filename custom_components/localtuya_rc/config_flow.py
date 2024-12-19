@@ -10,10 +10,12 @@ from .const import (
     DEFAULT_FRIENDLY_NAME,
     CONF_LOCAL_KEY,
     CONF_PROTOCOL_VERSION,
+    CONF_PERSISTENT_CONNECTION,
     CONF_CLOUD_INFO
 )
 
 from homeassistant import config_entries
+from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.const import (
     CONF_NAME,
@@ -31,18 +33,24 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    def __init__(self, entry = None):
+    def __init__(self):
         """Initialize the config flow."""
         # Default config
         self.config = {
             CONF_NAME: DEFAULT_FRIENDLY_NAME,
             CONF_LOCAL_KEY: '',
             CONF_PROTOCOL_VERSION: '3.3',
+            CONF_PERSISTENT_CONNECTION: True,
             CONF_REGION: 'eu',
             CONF_CLIENT_ID: '',
             CONF_CLIENT_SECRET: '',
         }
         self.cloud = False
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(entry):
+        return LocalTuyaIROptionsFlow(entry)
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
@@ -202,9 +210,33 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_HOST, default=self.config[CONF_HOST]): cv.string,
             vol.Required(CONF_DEVICE_ID, default=self.config[CONF_DEVICE_ID]): cv.string,
             vol.Required(CONF_LOCAL_KEY, default=self.config[CONF_LOCAL_KEY]): cv.string,
+            vol.Required(CONF_PERSISTENT_CONNECTION, default=self.config[CONF_PERSISTENT_CONNECTION]): cv.boolean
         })
         return self.async_show_form(
             step_id="config",
             errors=errors,
             data_schema=schema
+        )
+
+
+class LocalTuyaIROptionsFlow(config_entries.OptionsFlow):
+    """Options flow for LocalTuyaIR Remote Control."""
+    
+    def __init__(self, entry):
+        """Initialize the options flow."""
+        self.config = dict(entry.options)
+
+    async def async_step_init(self, user_input=None):
+        """Manage the options."""
+        if user_input is not None:
+            self.config[CONF_PERSISTENT_CONNECTION] = user_input[CONF_PERSISTENT_CONNECTION]
+            return self.async_create_entry(data=self.config)
+
+        options_schema = vol.Schema({
+            vol.Required(CONF_PERSISTENT_CONNECTION, default=self.config.get(CONF_PERSISTENT_CONNECTION, True)): cv.boolean
+        })
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema
         )
