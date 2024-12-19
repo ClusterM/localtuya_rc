@@ -21,7 +21,7 @@ from .const import (
 from homeassistant.const import (
     CONF_NAME,
     CONF_HOST,
-    CONF_DEVICE_ID
+    CONF_DEVICE_ID,
 )
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.exceptions import HomeAssistantError

@@ -65,6 +65,19 @@ If you don’t have the local key at hand, the setup wizard can retrieve it for 
 
 * If everything is correct, the integration will find your device on the local network and fill all the necessary information for you. Just click "Submit" and you're done!
 
+### YAML Configuration
+You can also configure the integration using classic YAML configuration. Here is an example:
+
+```yaml
+remote:
+  - platform: localtuya_rc
+    name: My Remote
+    host: 10.13.1.34
+    device_id: bf8c72d8a60c61a70fpje0
+    local_key: your_local_key
+    protocol_version: 3.3
+    persistant_connection: true
+```
 
 ## How to use
 
