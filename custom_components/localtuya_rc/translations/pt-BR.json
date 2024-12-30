@@ -1,0 +1,69 @@
+{
+    "title": "Controle Remoto LocalTuyaIR",
+    "config": {
+        "abort": {
+            "already_configured": "Erro: a integração para este dispositivo já está configurada.",
+            "unknown": "Erro desconhecido, por favor verifique os logs."
+        },
+        "error": {
+            "cannot_connect": "Não é possível conectar ao dispositivo. Verifique se o endereço, o ID do dispositivo e a chave local estão corretos.",
+            "no_control_type": "Não foi possível detectar o tipo de controle. Talvez o dispositivo não seja compatível, desculpe.",
+            "tuya_not_found": "Nenhum dispositivo Tuya encontrado. Certifique-se de que está online e conectado à mesma rede e tente novamente.",
+            "cloud_error": "Erro ao conectar à nuvem Tuya. Por favor, verifique sua configuração.",
+            "cloud_unauthorized": "Não autorizado a acessar a nuvem Tuya. Por favor, verifique sua configuração: chave de API e segredo de API.",
+            "cloud_no_devices": "Nenhum dispositivo Tuya encontrado na nuvem. Por favor, verifique sua configuração, certifique-se de que vinculou a conta correta e selecionou a região correta.",
+            "unknown": "Erro desconhecido, por favor verifique os logs."
+        },
+        "step": {
+            "method": {
+                "title": "Controle Remoto LocalTuyaIR",
+                "description": "Esta integração permitirá que você use seu dispositivo de controle remoto universal Tuya com o Home Assistant localmente, sem a necessidade da nuvem Tuya.\n\nPara acessar seu dispositivo de Controle Remoto Tuya, precisamos saber sua chave de criptografia local. Esta etapa pode ser um pouco complicada, então consulte a documentação para mais informações.\n\nPor favor, selecione o método que você deseja usar para configurar seu dispositivo de Controle Remoto Tuya.",
+                "menu_options": {
+                    "cloud": "Obter a chave local usando a API do Tuya Cloud",
+                    "pre_scan": "Inserir a chave local manualmente"
+                }
+            },
+            "cloud": {
+                "title": "API Tuya Cloud",
+                "description": "Para obter a chave local, precisamos nos conectar à nuvem Tuya. Por favor, insira o ID do Cliente e o Segredo do Cliente da API Tuya Cloud. Consulte a documentação para mais informações.",
+                "data": {
+                    "region": "Região",
+                    "client_id": "ID do Cliente",
+                    "client_secret": "Segredo do Cliente"
+                }
+            },
+            "pre_scan": {
+                "title": "Varredura de rede",
+                "description": "Agora precisamos encontrar seu dispositivo na rede. Isso pode levar até 30 segundos."
+            },
+            "scan": {
+                "title": "Selecione o dispositivo",
+                "description": "Por favor, selecione o endereço IP do seu dispositivo de Controle Remoto Tuya.",
+                "data": {
+                    "host": "Endereço IP do dispositivo"
+                }
+            },
+            "config": {
+                "title": "Configurar seu dispositivo de Controle Remoto Tuya",
+                "description": "Por favor, insira o endereço IP, o ID do dispositivo e a chave local do seu dispositivo de Controle Remoto Tuya.",
+                "data": {
+                    "name": "Nome do dispositivo",
+                    "host": "Host",
+                    "device_id": "ID do dispositivo",
+                    "local_key": "Chave local",
+                    "persistent_connection": "Conexão persistente (mais rápida, mas exclusiva)"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Configurar seu dispositivo de Controle Remoto Tuya",
+                "data": {
+                    "persistent_connection": "Conexão persistente (mais rápida, mas exclusiva)"
+                }
+            }
+        }
+    }
+}
