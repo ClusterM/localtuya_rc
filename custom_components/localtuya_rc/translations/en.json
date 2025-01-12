@@ -51,7 +51,7 @@
                     "host": "Host",
                     "device_id": "Device ID",
                     "local_key": "Local key",
-                    "persistent_connection": "Persistent connection (faster but exclusive)"
+                    "persistent_connection": "Persistent connection (faster but can be unstable)"
                 }
             }
         }
@@ -61,7 +61,7 @@
             "init": {
                 "title": "Configure your Tuya Remote Control device",
                 "data": {
-                    "persistent_connection": "Persistent connection (faster but exclusive)"
+                    "persistent_connection": "Persistent connection (faster but can be unstable)"
                 }
             }
         }

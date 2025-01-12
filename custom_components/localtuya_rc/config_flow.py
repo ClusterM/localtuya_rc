@@ -11,7 +11,8 @@ from .const import (
     CONF_LOCAL_KEY,
     CONF_PROTOCOL_VERSION,
     CONF_PERSISTENT_CONNECTION,
-    CONF_CLOUD_INFO
+    CONF_CLOUD_INFO,
+    DEFAULT_PERSISTENT_CONNECTION
 )
 
 from homeassistant import config_entries
@@ -40,7 +41,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NAME: DEFAULT_FRIENDLY_NAME,
             CONF_LOCAL_KEY: '',
             CONF_PROTOCOL_VERSION: '3.3',
-            CONF_PERSISTENT_CONNECTION: True,
+            CONF_PERSISTENT_CONNECTION: DEFAULT_PERSISTENT_CONNECTION,
             CONF_REGION: 'eu',
             CONF_CLIENT_ID: '',
             CONF_CLIENT_SECRET: '',
@@ -176,6 +177,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.config[CONF_HOST] = user_input[CONF_HOST]
             self.config[CONF_DEVICE_ID] = user_input[CONF_DEVICE_ID]
             self.config[CONF_LOCAL_KEY] = user_input[CONF_LOCAL_KEY]
+            self.config[CONF_PERSISTENT_CONNECTION] = user_input[CONF_PERSISTENT_CONNECTION]
             self.config[CONF_PROTOCOL_VERSION] = None
             # Bruteforce the protocol version (in order of preference)
             for version in [3.3, 3.4, 3.5, 3.2, 3.1]:
@@ -224,16 +226,20 @@ class LocalTuyaIROptionsFlow(config_entries.OptionsFlow):
     
     def __init__(self, entry):
         """Initialize the options flow."""
-        self.config = dict(entry.options)
+        self.entry = entry
+        self.config = dict(entry.data.items())
+        _LOGGER.debug("Options flow init, current config: %s", self.config)
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
         if user_input is not None:
             self.config[CONF_PERSISTENT_CONNECTION] = user_input[CONF_PERSISTENT_CONNECTION]
+            _LOGGER.debug("Config updated: %s", self.config)
+            self.hass.config_entries.async_update_entry(self.entry, data=self.config)
             return self.async_create_entry(data=self.config)
 
         options_schema = vol.Schema({
-            vol.Required(CONF_PERSISTENT_CONNECTION, default=self.config.get(CONF_PERSISTENT_CONNECTION, True)): cv.boolean
+            vol.Required(CONF_PERSISTENT_CONNECTION, default=self.config.get(CONF_PERSISTENT_CONNECTION, DEFAULT_PERSISTENT_CONNECTION)): cv.boolean
         })
 
         return self.async_show_form(

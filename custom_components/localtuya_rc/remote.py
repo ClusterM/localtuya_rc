@@ -16,6 +16,7 @@ from .const import (
     CODE_STORAGE_VERSION,
     CODE_STORAGE_CODES,
     NOTIFICATION_TITLE,
+    DEFAULT_PERSISTENT_CONNECTION
 )
 
 from homeassistant.const import (
@@ -52,7 +53,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             vol.Required(CONF_PROTOCOL_VERSION, default="3.3"): vol.In(
                 ["3.1", "3.2", "3.3", "3.4", "3.5"]
             ),
-            vol.Required(CONF_PERSISTENT_CONNECTION, default=True): cv.boolean,
+            vol.Required(CONF_PERSISTENT_CONNECTION, default=DEFAULT_PERSISTENT_CONNECTION): cv.boolean,
     }
 )
 
@@ -67,17 +68,19 @@ async def async_setup_entry(hass, entry, async_add_entities, discovery_info=None
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up platform."""
     if config == None:
+        _LOGGER.error("Configuration is empty")
         return
-
+    
     name = config.get(CONF_NAME, DEFAULT_FRIENDLY_NAME)
     dev_id = config.get(CONF_DEVICE_ID)
     host = config.get(CONF_HOST)
     local_key = config.get(CONF_LOCAL_KEY)
     protocol_version = config.get(CONF_PROTOCOL_VERSION)
     cloud_info = config.get(CONF_CLOUD_INFO, None)
-    persistent_connection = config.get(CONF_PERSISTENT_CONNECTION, True)
+    persistent_connection = config.get(CONF_PERSISTENT_CONNECTION, DEFAULT_PERSISTENT_CONNECTION)
 
     if name is None or host is None or dev_id is None or local_key is None:
+        _LOGGER.error("Missing required configuration items")
         return
 
     _LOGGER.debug("Setting up Tuya IR Remote Control: name=%s, dev_id=%s, host=%s, local_key=%s, protocol_version=%s, persistent_connection=%s, cloud_info=%s", name, dev_id, host, local_key, protocol_version, persistent_connection, cloud_info)
@@ -90,7 +93,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 class TuyaRC(RemoteEntity):
-    def __init__(self, name, dev_id, address, local_key, protocol_version, persistent_connection=True, cloud_info=None):
+    def __init__(self, name, dev_id, address, local_key, protocol_version, persistent_connection=DEFAULT_PERSISTENT_CONNECTION, cloud_info=None):
         self._name = name
         self._dev_id = dev_id
         self._address = address
@@ -109,12 +112,15 @@ class TuyaRC(RemoteEntity):
     def _init(self):
         if self._device:
             return
+        _LOGGER.debug("Initializing device %s (address: %s, local_key: %s, protocol_version: %s, persistent_connection: %s)...", self._dev_id, self._address, self._local_key, self._protocol_version, self._persistent_connection)
         self._device = Contrib.IRRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version), persist=self._persistent_connection)
+        _LOGGER.debug("Device %s initialized.", self._dev_id)
 
     def _deinit(self):
         if self._device:
             self._device.close()
             self._device = None
+            _LOGGER.debug("Device %s deinitialized.", self._dev_id)
 
     @property
     def available(self):
