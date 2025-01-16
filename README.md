@@ -75,8 +75,7 @@ remote:
     host: 10.13.1.34
     device_id: bf8c72d8a60c61a70fpje0
     local_key: your_local_key
-    protocol_version: 3.3
-    persistant_connection: true
+    protocol_version: '3.3'
 ```
 
 ## How to use
