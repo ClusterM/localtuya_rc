@@ -286,7 +286,7 @@ def rc5_decode(values):
     cmd = ((data[1] >> 3) & 0b11111) | ((data[0] & 1) << 5)
     if data[0] & 0x80 == 0:
         # RC5X
-        cmd |= 0x40 
+        cmd |= 0x40
     return f"addr=0x{addr:02X},cmd=0x{cmd:02X}"
 
 def rc5_encode(addr, cmd, toggle=None):
@@ -506,13 +506,22 @@ def air_conditioner_decode(values):
         return (addr, cmd)
     addr, cmd = ac_decode_half(values[:100])
     double = 0
+    closing = NEC_GAP_0
     if len(values) >= 200:
+        # closing gap is known to be either AC_LEADING_GAP or NEC_GAP_0
+        if pulse.in_range(values[99], AC_LEADING_GAP):
+            closing = AC_LEADING_GAP
         addr2, cmd2 = ac_decode_half(values[100:])
         if addr == addr2 and cmd == cmd2:
             double = 1
-    return f"addr=0x{addr:02X},cmd=0x{cmd:04X},double={double}"
+    result = f"addr=0x{addr:02X},cmd=0x{cmd:04X}"
+    if double:
+        result += f",double={double}"
+    if closing != NEC_GAP_0:
+        result += f",closing={closing}"
+    return result
 
-def air_conditioner_encode(addr, cmd, double=0):
+def air_conditioner_encode(addr, cmd, double=0, closing=NEC_GAP_0):
     if not (0x00 <= addr <= 0xFF):
         raise ValueError("Address must be in range 0x00-0xFF")
     if not (0x0000 <= cmd <= 0xFFFF):
@@ -522,7 +531,7 @@ def air_conditioner_encode(addr, cmd, double=0):
     if double:
         # Need to repeat the signal twice
         if len(v) % 2 == 1:
-            v.append(NEC_GAP_0)
+            v.append(closing)
         v *= 2
     return v
 
