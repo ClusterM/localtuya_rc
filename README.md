@@ -87,7 +87,7 @@ This integration creates a new "remote.*" entity for your IR remote controller. 
 To learn new commands, call the `remote.learn_command` service and pass the entity_id of your remote controller. You can do it from the Developer Tools. You must specify a `command` parameter with the name of the command you want to learn. 
 You can make integration to remember the button code by passing a `device` parameter. If you don't pass it, the button code will be shown in the notification only.
 
-![image](https://github.com/user-attachments/assets/055d5bdd-7f35-4df0-9554-f00791a11b81)
+![image](https://github.com/user-attachments/assets/1c08c1d4-67a4-4737-9b35-f0624d64aafe)
 
 After calling the service, you will receive a notification which asks you to press the button on your real remote controller. Point your remote controller at the IR receiver of your Wi-Fi IR remote emulator and press the button you want to learn. If the learning process is successful, you will receive a notification with the button code with some additional instructions.
 
