@@ -554,7 +554,7 @@ RC_CONVERTERS = {
     "ac": (air_conditioner_encode, air_conditioner_decode),
 }
 
-def rc_auto_decode(values):
+def rc_auto_decode(values, force_raw=False):
     """
     Attempt to decode a list of pulse and gap durations using various decoders.
 
@@ -571,11 +571,12 @@ def rc_auto_decode(values):
         str: The decoded value prefixed with the decoder name, or the raw data if decoding fails.
     """
     # Try every decoder
-    for name, (_, decoder) in RC_CONVERTERS.items():
-        try:
-            return f"{name}:{decoder(values)}"
-        except ValueError:
-            pass
+    if not force_raw:
+        for name, (_, decoder) in RC_CONVERTERS.items():
+            try:
+                return f"{name}:{decoder(values)}"
+            except ValueError:
+                pass
     # Return raw data otherwise
     if len(values) % 2 == 0:
         # Must be odd

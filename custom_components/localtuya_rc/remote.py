@@ -272,6 +272,7 @@ class TuyaRC(RemoteEntity):
         notification_id = "learn_command_" + self._dev_id + "_" + str(device) + "_" + command
         
         try:
+            if not command: raise ValueError("You need to specify a command name to learn.")
             if command_type != "ir": raise NotImplementedError(f'Unknown command type "{command_type}", only "ir" is supported.')
             if alternative != None: raise ValueError('"Alternative" option is not supported.')
             if self._lock.locked():
@@ -298,8 +299,10 @@ class TuyaRC(RemoteEntity):
             if len(pulses) < 4:
                 raise ValueError("This IR code is too short and seems to be invalid. Please try to learn the command again.")
             decoded = rc_auto_decode(pulses)
+            decoded_raw = rc_auto_decode(pulses, force_raw=True)
 
             direct_code_example = f'<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded}</pre>'
+            direct_code_example_raw = f'If code above is not working, you can try to use the raw code:\n<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded_raw}</pre>But <a href="https://github.com/ClusterM/localtuya_rc/issues">create a bug report</a> in such case, please.'
             
             if device:
                 await self._async_load_storage_files()
@@ -307,14 +310,18 @@ class TuyaRC(RemoteEntity):
                 await self._storage.async_save(self._codes)
                 self.schedule_update_ha_state() # Update device attributes
                 msg = f'Successfully learned command "<b>{command}</b>" for device "<b>{device}</b>", code:\r\n<pre>{decoded}</pre>' + \
+                    (f"Raw code:<pre>{decoded_raw}</pre>" if not decoded.startswith("raw:") else "") + \
                     "\n\nNow you can use this device identifier and command name in your automations and scripts with the 'remote.send_command' service. Example:" + \
                     f'<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  device: {device}\n  command: {command}</pre>' + \
                     "\n\nOr you can use the button code directly in your automations and scripts with the 'remote.send_command' service. Example:" + \
-                    direct_code_example
+                    direct_code_example + \
+                    (f"\n\n{direct_code_example_raw}" if not decoded.startswith("raw:") else "")
             else:
                 msg = f'Successfully received command "{command}", code:\r\n<pre>{decoded}</pre>' + \
+                    (f"Raw code:<pre>{decoded_raw}</pre>" if not decoded.startswith("raw:") else "") + \
                     "\n\nNow you can use this code in your automations and scripts with the 'remote.send_command' service. Example:" + \
-                    direct_code_example
+                    direct_code_example + \
+                    (f"\n\n{direct_code_example_raw}" if not decoded.startswith("raw:") else "")
                 
             if decoded.startswith("raw:"):
                 msg += "\r\n\r\n<b>Warning</b>: this command is learned in raw format, e.g. it can't be decoded using known protocol decoders. It's better to try to learn the command again but it's ok if you keep seeing this message."
