@@ -178,14 +178,32 @@ class TuyaRC(RemoteEntity):
     def _receive_button(self, timeout):
         with self._lock:
             self._init()
-            return self._device.receive_button(timeout)
+            try:
+                return self._device.receive_button(timeout)
+            except:
+                _LOGGER.error("Failed to receive button, exception %s: %s", type(e), e, exc_info=True)
+                raise HomeAssistantError("tinytuya library internal error, please check the logs.")
     
     def _send_button(self, pulses):
         with self._lock:
             try:
                 self._init()
-                b64 = Contrib.IRRemoteControlDevice.pulses_to_base64(pulses)
-                return self._device.send_button(b64)
+                if type(pulses) == str:
+                    _LOGGER.debug("Sending command as base64: '%s'", pulses)
+                    try:
+                        return self._device.send_button(pulses)
+                    except:
+                        _LOGGER.error("Failed to send command as base64, exception %s: %s", type(e), e, exc_info=True)
+                        raise HomeAssistantError("tinytuya library internal error, please check the logs.")
+                else:
+                    _LOGGER.debug("Sending command as pulses: '%s'", pulses)
+                    b64 = Contrib.IRRemoteControlDevice.pulses_to_base64(pulses)
+                    _LOGGER.debug("Converted to base64: '%s'", b64)
+                    try:
+                        return self._device.send_button(b64)
+                    except:
+                        _LOGGER.error("Failed to send command as pulses, exception %s: %s", type(e), e, exc_info=True)
+                        raise HomeAssistantError("tinytuya library internal error, please check the logs.")
             except Exception as e:
                 self._deinit()
                 raise e

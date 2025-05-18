@@ -607,6 +607,8 @@ def rc_auto_encode(s):
         fmt, data = s.split(":", 1)
         if fmt == "raw":
             return [int(v, 0) for v in data.split(",")]
+        if fmt == "tuya":
+            return data # raw base64 Tuya-format
         data = dict(v.split("=") for v in data.split(","))
         data = {k: int(v, 0) for k, v in data.items()}
     except:

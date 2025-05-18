@@ -8,6 +8,7 @@ This integration addresses that gap. It provides full local control of Tuya Wi-F
 * Local Control: No external cloud services required. All communication remains within your local network, improving reliability and responsiveness.
 * Flexible IR Control: Seamlessly integrate Wi-Fi-based IR remote emulators from Tuya, enabling you to manage a wide range of IR-controlled devices—such as TVs, air conditioners, and audio systems—directly from Home Assistant.
 
+
 ## Integration setup
 
 ### Installation
@@ -104,6 +105,7 @@ remote:
     protocol_version: '3.3'
 ```
 
+
 ## How to use
 
 This integration creates a new "remote.*" entity for your IR remote controller. But "Remote" entities are not directly controllable. You must use the `remote.send_command` service to send IR commands to your device and `remote.learn_command` service to learn new commands (read button codes from your remote). So, you can create scripts, automations, or even use the `remote.send_command` service directly from the Developer Tools to control your IR devices.
@@ -151,7 +153,7 @@ When defining IR commands for the Tuya IR remote emulator in Home Assistant, eac
 
 Because different devices and remotes may use various encoding schemes and timing, this flexible format ensures you can accurately represent a broad range of commands. Whether you’re dealing with a fully supported protocol like NEC or need to reproduce a custom signal captured from an unusual remote, these strings give you the necessary control and versatility.
 
-Below are the two main formats you can use, along with details on how to specify parameters and numerical values.
+Below are the three main formats you can use, along with details on how to specify parameters and numerical values.
 
 ### Raw Timing Format
 
@@ -174,6 +176,12 @@ nec:addr=0x25,cmd=0x1E
 Here, `addr` and `cmd` represent the address and command bytes defined by the NEC protocol. By using a recognized protocol, the integration takes care of the underlying timing details, making it easier to specify and understand the command.
 
 For both raw and protocol-based formats, you can specify numeric values in either decimal or hexadecimal form. Hexadecimal values are prefixed with `0x`.
+
+### Tuya Base64 Format
+Tuya devices internally use a Base64 format for IR codes. You can get a Base64-encoded IR codes via the Tuya API. Usually integration will encode the IR code to Base64 automatically, but if you want to use it directly, you can specify the code in Base64 format, like this:
+```
+tuya:KCOUETACMAIwAjACMAIwAjACMAIwAjACMAIwAjACMAIwAjACMAKaBjACmgYwApoGMAKaBjACMAIwApoGMAKaBjACmgYwApoGMAIwAjACMAIwAjACMAIwAjACMAIwAjACMAIwAjACMAIwApoGMAKaBjACmgYwApoGMAKaBjACmgYwApoGMAI=
+```
 
 ### Supported IR Protocols and Parameters
 
