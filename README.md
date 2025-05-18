@@ -10,13 +10,39 @@ This integration addresses that gap. It provides full local control of Tuya Wi-F
 
 ## Integration setup
 
+### Installation
+####  Installation via HACS (Recommended)
+The Home Assistant Community Store (HACS) is a powerful tool that allows you to discover and manage custom integrations and plugins. If you haven't installed HACS yet, refer to the official installation guide: https://www.hacs.xyz/docs/use/download/download/.
+
+Steps:
+* Navigate to HACS → Integrations in your Home Assistant sidebar.
+* Click on the search icon and type LocalTuyaIR Remote Control.
+* Select the integration from the search results.
+* Click Install.
+* After installation, restart Home Assistant to load the new integration.
+* Go to Settings → Devices & Services → Add Integration.
+* Search for "LocalTuyaIR Remote Control" and follow the setup wizard.
+
+#### Manual Installation
+If you prefer manual installation or are not using HACS, follow these steps:
+* Visit the [Releases](https://github.com/ClusterM/localtuya_rc/releases) page of the integration's GitHub repository.
+* Download the latest .zip file.
+* Unzip the downloaded file.
+* Locate the "localtuya_rc" directory inside the extracted contents (in "custom_components" directory).
+* Move the "localtuya_rc" folder to your Home Assistant's custom_components directory.
+* After copying the files, restart Home Assistant to recognize the new integration.
+* Navigate to Settings → Devices & Services → Add Integration.
+* Search for LocalTuyaIR Remote Control and follow the setup wizard.
+
+### Local Key
+
 Just like other Tuya devices controlled locally, you’ll need to obtain the device’s “local key” (the encryption key) to manage the IR remote emulator without relying on the cloud. If you already know the local key, you can provide it manually. Otherwise, let the setup wizard guide you through retrieving it via the Tuya API. Unfortunately, this still requires creating a developer account at iot.tuya.com and linking it to your existing Tuya account. After linking, the integration uses your API credentials (Access ID and Access Secret) to automatically fetch the local key.
 
-### Providing the Local Key Manually
+#### Providing the Local Key Manually
 
 If you have already obtained the local key for your IR remote device through other means, simply select "Enter the local key manually" and follow the prompts to input the key during the integration setup.
 
-### Automated Retrieval via Tuya API
+#### Automated Retrieval via Tuya API
 
 If you don’t have the local key at hand, the setup wizard can retrieve it for you — but you must supply the necessary Tuya API credentials. Here’s what you need to do:
 * Add your Tuya IR remote emulator device to the Tuya Smart or Smart Life app ([for Android](https://play.google.com/store/apps/details?id=com.tuya.smartlife) or [for iOS](https://apps.apple.com/us/app/smart-life-smart-living/id1115101477)). Yes, you need to do it even if you want to control it locally.
