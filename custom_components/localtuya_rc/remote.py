@@ -227,6 +227,7 @@ class TuyaRC(RemoteEntity):
             try:
                 self._init()
                 status = self._device.status()
+                _LOGGER.debug(f"Device status: {status}")
                 self._available = status and not "Error" in status
                 if not self._available:
                     _LOGGER.error("Device is not available, status: %s", status)

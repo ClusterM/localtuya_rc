@@ -20,7 +20,7 @@
                 "description": "This integration will allow you use your Tuya universal remote control device with Home Assistant locally, without the need for the Tuya cloud.\n\nTo access your Tuya Remote Control device, we need to know its local encryption key. This step can be a bit tricky, so please see the documentation for more information.\n\nPlease select the method you want to use to configure your Tuya Remote Control device.",
                 "menu_options": {
                     "cloud": "Obtain the local key using the Tuya Cloud API",
-                    "pre_scan": "Enter the local key manually"
+                    "ip_method": "Enter the local key manually"
                 }
             },
             "cloud": {
@@ -30,6 +30,23 @@
                     "region": "Region",
                     "client_id": "Client ID",
                     "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "How to obtain the device IP address",
+                "description": "To obtain the device IP address, you can either scan your local network or enter it manually.",                
+                "menu_options": {
+                    "pre_scan": "Scan the local network (recommended)",
+                    "ask_ip": "Enter the IP address manually",
+                    "config": "Enter the IP address manually"
+                }
+            },
+            "ask_ip": {
+                "title": "Enter the device IP address",
+                "description": "Please enter the IP address of your Tuya Remote Control device and select the corresponding device from the Tuya cloud.",
+                "data": {
+                    "host": "Device IP address",
+                    "device_id": "Device name"
                 }
             },
             "pre_scan": {

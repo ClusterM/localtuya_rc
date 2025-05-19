@@ -39,12 +39,14 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Default config
         self.config = {
             CONF_NAME: DEFAULT_FRIENDLY_NAME,
+            CONF_DEVICE_ID: '',
             CONF_LOCAL_KEY: '',
             CONF_PROTOCOL_VERSION: '3.3',
             CONF_PERSISTENT_CONNECTION: DEFAULT_PERSISTENT_CONNECTION,
             CONF_REGION: 'eu',
             CONF_CLIENT_ID: '',
             CONF_CLIENT_SECRET: '',
+            CONF_HOST: '',
         }
         self.cloud = False
 
@@ -58,11 +60,11 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_method()
 
     async def async_step_method(self, user_input=None):
-        """Handle the method step."""
+        """Select: use Tuya Cloud API or enter local key manually."""
         # Ask user to to obtain the local key: via the API or enter manually
         return self.async_show_menu(
             step_id="method",
-            menu_options=["cloud", "pre_scan"])
+            menu_options=["cloud", "ip_method"])
 
     def _get_cloud_devices(self, region, client_id, client_secret):
         cloud = Cloud(region, client_id, client_secret)
@@ -70,7 +72,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return cloud, status
 
     async def async_step_cloud(self, user_input=None):
-        """Handle the api step."""
+        """Handle the API step, enter credentials."""
         errors = {}
         if user_input is not None:
             try:
@@ -89,7 +91,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     else:
                         self.cloud_devices = devices
                         self.cloud = True
-                        return await self.async_step_pre_scan()
+                        return await self.async_step_ip_method()
             except Exception as e:
                 _LOGGER.error("Cloud API error: %s", e, exc_info=True)
                 errors["base"] = "unknown"
@@ -106,8 +108,42 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema
         )
 
+    async def async_step_ip_method(self, user_input=None, errors={}):
+        """Ask user to scan for devices or enter the IP manually."""
+        if self.cloud:
+            return self.async_show_menu(
+                step_id="ip_method",
+                menu_options=["pre_scan", "ask_ip"])
+        else:
+            return self.async_show_menu(
+                step_id="ip_method",
+                menu_options=["pre_scan", "config"])
+        
+    async def async_step_ask_ip(self, user_input=None, errors={}):
+        """Ask user to enter the IP manually."""
+        if user_input is not None:
+            self.config[CONF_HOST] = user_input[CONF_HOST]
+            id = user_input[CONF_DEVICE_ID].split(' ')[-1][1:-1]
+            self.config[CONF_DEVICE_ID] = id
+            devices = [device for device in self.cloud_devices if device['id'] == id]
+            self.config[CONF_NAME] = devices[0]['name']
+            self.config[CONF_LOCAL_KEY] = devices[0]['key']
+            return await self.async_step_config()
+        device_list = [f"{device['name']} ({device['id']})" for device in self.cloud_devices]
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_HOST, default=self.config[CONF_HOST]): cv.string,
+                vol.Required(CONF_DEVICE_ID): vol.In(device_list),
+            }
+        )
+        return self.async_show_form(
+            step_id="ask_ip",
+            errors=errors,
+            data_schema=schema
+        )
+
     async def async_step_pre_scan(self, user_input=None, errors={}):
-        """Handle the pre-scan step."""
+        """Just show a message to the user."""
         if user_input is not None:
             return await self.async_step_scan()
         return self.async_show_form(
@@ -117,7 +153,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_scan(self, user_input=None):
-        """Handle the scan step."""
+        """Scan local network for devices."""
         errors = {}
         if user_input is not None:
             spl = user_input[CONF_HOST].split(' ', maxsplit=1)
@@ -171,7 +207,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return device, status
 
     async def async_step_config(self, user_input=None, errors={}):
-        """Handle the config step."""
+        """Last config step"""
         if user_input is not None:
             self.config[CONF_NAME] = user_input[CONF_NAME]
             self.config[CONF_HOST] = user_input[CONF_HOST]
