@@ -201,7 +201,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _test_connection(self, dev_id, address, local_key, version):
         _LOGGER.debug("Testing connection to %s at %s with key %s", dev_id, address, local_key)
-        device = Contrib.IRRemoteControlDevice(dev_id=dev_id, address=address, local_key=local_key, version=version)
+        device = Contrib.IRRemoteControlDevice(dev_id=dev_id, address=address, local_key=local_key, version=version, timeout=5)
         status = device.status()
         _LOGGER.debug("Connection test status: %s, control type detected: %s", status, device.control_type)
         return device, status
