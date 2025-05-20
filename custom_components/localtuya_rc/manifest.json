@@ -9,6 +9,6 @@
   "documentation": "https://github.com/ClusterM/localtuya_rc/blob/master/README.md",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/ClusterM/localtuya_rc/issues",
-  "requirements": ["tinytuya"],
-  "version": "1.1"
+  "requirements": ["tinytuya>=1.16.3"],
+  "version": "1.2"
 }
