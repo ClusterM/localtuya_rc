@@ -5,15 +5,7 @@ import voluptuous as vol
 import tinytuya
 from tinytuya import Contrib, Cloud
 
-from .const import (
-    DOMAIN,
-    DEFAULT_FRIENDLY_NAME,
-    CONF_LOCAL_KEY,
-    CONF_PROTOCOL_VERSION,
-    CONF_PERSISTENT_CONNECTION,
-    CONF_CLOUD_INFO,
-    DEFAULT_PERSISTENT_CONNECTION
-)
+from .const import *
 
 from homeassistant import config_entries
 from homeassistant.core import callback
@@ -41,7 +33,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NAME: DEFAULT_FRIENDLY_NAME,
             CONF_DEVICE_ID: '',
             CONF_LOCAL_KEY: '',
-            CONF_PROTOCOL_VERSION: '3.3',
+            CONF_PROTOCOL_VERSION: 'Auto',
             CONF_PERSISTENT_CONNECTION: DEFAULT_PERSISTENT_CONNECTION,
             CONF_REGION: 'eu',
             CONF_CLIENT_ID: '',
@@ -201,7 +193,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _test_connection(self, dev_id, address, local_key, version):
         _LOGGER.debug("Testing connection to %s at %s with key %s", dev_id, address, local_key)
-        device = Contrib.IRRemoteControlDevice(dev_id=dev_id, address=address, local_key=local_key, version=version, timeout=5)
+        device = Contrib.IRRemoteControlDevice(dev_id=dev_id, address=address, local_key=local_key, version=version, connection_timeout=5, connection_retry_delay=0.5, connection_retry_limit=2)
         status = device.status()
         _LOGGER.debug("Connection test status: %s, control type detected: %s", status, device.control_type)
         return device, status
@@ -214,20 +206,21 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.config[CONF_DEVICE_ID] = user_input[CONF_DEVICE_ID]
             self.config[CONF_LOCAL_KEY] = user_input[CONF_LOCAL_KEY]
             self.config[CONF_PERSISTENT_CONNECTION] = user_input[CONF_PERSISTENT_CONNECTION]
-            self.config[CONF_PROTOCOL_VERSION] = None
+            self.config[CONF_PROTOCOL_VERSION] = user_input[CONF_PROTOCOL_VERSION]
             # Bruteforce the protocol version (in order of preference)
-            for version in [3.3, 3.4, 3.5, 3.2, 3.1]:
+            try_versions = TUYA_VERSIONS if user_input[CONF_PROTOCOL_VERSION] == "Auto" else [user_input[CONF_PROTOCOL_VERSION]]
+            version_ok = None
+            for version in try_versions:
                 _LOGGER.debug("Trying protocol version %s", version)
                 try:
                     device, status = await self.hass.async_add_executor_job(self._test_connection, user_input[CONF_DEVICE_ID], user_input[CONF_HOST], user_input[CONF_LOCAL_KEY], version)
                 except Exception as e:
                     _LOGGER.error("Device test error, exception %s: %s", type(e), e, exc_info=True)
                     continue
-                _LOGGER.debug("Connection test status: %s", status)
                 if "Error" not in status:
-                    self.config[CONF_PROTOCOL_VERSION] = version
+                    version_ok = version
                     break
-            if not self.config[CONF_PROTOCOL_VERSION]:
+            if not version_ok:
                 errors["base"] = "cannot_connect"
                 _LOGGER.error(f"Cannot connect to device using any protocol version")
             elif not device.control_type:
@@ -237,17 +230,21 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_abort(reason="already_configured")
             else:
                 # Ok!
+                self.config[CONF_PROTOCOL_VERSION] = version_ok
                 if self.cloud and 'key' in self.cloud_info:
-                    del self.cloud_info['key']
+                    del self.cloud_info['key'] # to protect the key
                 self.config[CONF_CLOUD_INFO] = self.cloud_info if self.cloud else None
                 _LOGGER.debug("Config: %s", self.config)
                 await self.async_set_unique_id(self.config[CONF_DEVICE_ID])
                 return self.async_create_entry(title=self.config[CONF_NAME], data=self.config)
+        versions_sorted = TUYA_VERSIONS.copy()
+        versions_sorted.sort()
         schema = vol.Schema({
             vol.Required(CONF_NAME, default=self.config[CONF_NAME]): cv.string,
             vol.Required(CONF_HOST, default=self.config[CONF_HOST]): cv.string,
             vol.Required(CONF_DEVICE_ID, default=self.config[CONF_DEVICE_ID]): cv.string,
             vol.Required(CONF_LOCAL_KEY, default=self.config[CONF_LOCAL_KEY]): cv.string,
+            vol.Required(CONF_PROTOCOL_VERSION, default=self.config[CONF_PROTOCOL_VERSION]): vol.In(["Auto"] + versions_sorted),
             vol.Required(CONF_PERSISTENT_CONNECTION, default=self.config[CONF_PERSISTENT_CONNECTION]): cv.boolean
         })
         return self.async_show_form(

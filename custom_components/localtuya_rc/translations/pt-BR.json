@@ -6,7 +6,7 @@
             "unknown": "Erro desconhecido, por favor verifique os logs."
         },
         "error": {
-            "cannot_connect": "Não é possível conectar ao dispositivo. Verifique se o endereço, o ID do dispositivo e a chave local estão corretos.",
+            "cannot_connect": "Não é possível conectar ao dispositivo. Verifique se o endereço, o ID do dispositivo, a chave local e a versão do protocolo estão corretos.",
             "no_control_type": "Não foi possível detectar o tipo de controle. Talvez o dispositivo não seja compatível, desculpe.",
             "tuya_not_found": "Nenhum dispositivo Tuya encontrado. Certifique-se de que está online e conectado à mesma rede e tente novamente.",
             "cloud_error": "Erro ao conectar à nuvem Tuya. Por favor, verifique sua configuração.",
@@ -68,6 +68,7 @@
                     "host": "Host",
                     "device_id": "ID do dispositivo",
                     "local_key": "Chave local",
+                    "protocol_version": "Versão do protocolo (geralmente 3.3 ou 3.4)",
                     "persistent_connection": "Conexão persistente (mais rápida, mas exclusiva)"
                 }
             }
