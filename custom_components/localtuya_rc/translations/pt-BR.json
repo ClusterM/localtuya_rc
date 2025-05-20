@@ -20,7 +20,7 @@
                 "description": "Esta integração permitirá que você use seu dispositivo de controle remoto universal Tuya com o Home Assistant localmente, sem a necessidade da nuvem Tuya.\n\nPara acessar seu dispositivo de Controle Remoto Tuya, precisamos saber sua chave de criptografia local. Esta etapa pode ser um pouco complicada, então consulte a documentação para mais informações.\n\nPor favor, selecione o método que você deseja usar para configurar seu dispositivo de Controle Remoto Tuya.",
                 "menu_options": {
                     "cloud": "Obter a chave local usando a API do Tuya Cloud",
-                    "pre_scan": "Inserir a chave local manualmente"
+                    "ip_method": "Inserir a chave local manualmente"
                 }
             },
             "cloud": {
@@ -30,6 +30,23 @@
                     "region": "Região",
                     "client_id": "ID do Cliente",
                     "client_secret": "Segredo do Cliente"
+                }
+            },
+            "ip_method": {
+                "title": "Como obter o endereço IP do dispositivo",
+                "description": "Para obter o endereço IP do dispositivo, você pode escanear sua rede local ou inseri-lo manualmente.",
+                "menu_options": {
+                    "pre_scan": "Escanear a rede local (recomendado)",
+                    "ask_ip": "Inserir o endereço IP manualmente",
+                    "config": "Inserir o endereço IP manualmente"
+                }
+            },
+            "ask_ip": {
+                "title": "Insira o endereço IP do dispositivo",
+                "description": "Por favor, insira o endereço IP do seu dispositivo de Controle Remoto Tuya e selecione o dispositivo correspondente na nuvem Tuya.",
+                "data": {
+                    "host": "Endereço IP do dispositivo",
+                    "device_id": "Nome do dispositivo"
                 }
             },
             "pre_scan": {
