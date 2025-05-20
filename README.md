@@ -223,7 +223,7 @@ The `toggle` parameter can be 0 or 1 and is optional. It helps to distinguish be
 
 - **pioneer**: Used in Pioneer devices, this protocol requires `addr` and `cmd`.
 
-- **ac**: Some air conditioners use this protocol (at least Gorenie and MDV). Usually 16-bit command contains 4-bit mode, 4-bit fan speed, 4-bit temperature and some other bits. Requires `addr` and `cmd`.
+- **ac**: Some air conditioners use this protocol (at least Gorenie and MDV). Usually 16-bit command contains 4-bit mode, 4-bit fan speed, 4-bit temperature and some other bits. Requires `addr` and `cmd`. `double` (repeat signal two times) and `closing` (add closing signal) parameters are optional.
 
 
 ## Credits
