@@ -15,7 +15,11 @@ This integration addresses that gap. It provides full local control of Tuya Wi-F
 ####  Installation via HACS (Recommended)
 The Home Assistant Community Store (HACS) is a powerful tool that allows you to discover and manage custom integrations and plugins. If you haven't installed HACS yet, refer to the official installation guide: https://www.hacs.xyz/docs/use/download/download/.
 
-Steps:
+Just click on the button:
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=clusterm&repository=localtuya_rc)
+
+Or follow these steps:
 * Navigate to HACS → Integrations in your Home Assistant sidebar.
 * Click on the search icon and type "LocalTuyaIR Remote Control".
 * Select the integration from the search results.
