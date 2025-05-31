@@ -17,7 +17,7 @@ The Home Assistant Community Store (HACS) is a powerful tool that allows you to 
 
 Steps:
 * Navigate to HACS → Integrations in your Home Assistant sidebar.
-* Click on the search icon and type LocalTuyaIR Remote Control.
+* Click on the search icon and type "LocalTuyaIR Remote Control".
 * Select the integration from the search results.
 * Click Install.
 * After installation, restart Home Assistant to load the new integration.
