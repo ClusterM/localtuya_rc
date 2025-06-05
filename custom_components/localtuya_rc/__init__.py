@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     _LOGGER.debug("Unloading")
-    return await hass.config_entries.async_unload_platforms(entry, ["remote"])
+    return await hass.config_entries.async_unload_platforms(entry, Platform.REMOTE)
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
     """Handle options update."""
