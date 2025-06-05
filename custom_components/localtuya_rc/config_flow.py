@@ -89,7 +89,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
         schema = vol.Schema(
             {
-                vol.Required(CONF_REGION, default=self.config[CONF_REGION]): vol.In(["us", "us-e", "eu", "eu-w", "in", "cn"]),
+                vol.Required(CONF_REGION, default=self.config[CONF_REGION]): vol.In(["us", "us-e", "eu", "eu-w", "in", "cn", "sg"]),
                 vol.Required(CONF_CLIENT_ID, default=self.config[CONF_CLIENT_ID]): cv.string,
                 vol.Required(CONF_CLIENT_SECRET, default=self.config[CONF_CLIENT_SECRET]): cv.string
             }
