@@ -64,9 +64,11 @@ If you don’t have the local key at hand, the setup wizard can retrieve it for 
 
   ![image](https://user-images.githubusercontent.com/4236181/139101390-2fb4e88f-235c-4872-91a1-3e78ee6217f8.png)
 
-* Skip Configuration Wizard.
+* Authorize API Services
 
-  ![image](https://user-images.githubusercontent.com/4236181/139154750-690cf86a-98ac-4428-8aa8-467ef8b96d32.png)
+  ![image](https://github.com/user-attachments/assets/5ba180da-1d50-495e-8074-f03df03d7eb5)
+
+  > Note: You need access to the "IoT Core" service, but only a one-month trial period is available after registration. If you need to obtain a local key again later, you will have to extend the trial on the "Service API" tab.
 
 * Copy and save your **Client ID** and **Client Secret**.
 
