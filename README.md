@@ -68,7 +68,7 @@ If you don’t have the local key at hand, the setup wizard can retrieve it for 
 
   ![image](https://github.com/user-attachments/assets/5ba180da-1d50-495e-8074-f03df03d7eb5)
 
-  > Note: You need access to the "IoT Core" service, but only a one-month trial period is available after registration. If you need to obtain a local key again later, you will have to extend the trial on the "Service API" tab.
+  > Note: You need access to the "IoT Core" service, but only a one-month trial period is available after registration. If you need to obtain a local key again later, you will have to extend the trial on the "Service API" tab. Guide: https://community.home-assistant.io/t/tuya-dev-account-renewal-steps/685268
 
 * Copy and save your **Client ID** and **Client Secret**.
 
