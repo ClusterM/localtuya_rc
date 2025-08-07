@@ -4,6 +4,7 @@ import asyncio
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from tinytuya import Contrib
+from tinytuya.Contrib import RFRemoteControlDevice
 import threading
 
 from .const import (
@@ -107,6 +108,7 @@ class TuyaRC(RemoteEntity):
         self._available = False
 
         self._device = None
+        self._device_RF = None
         self._lock = threading.Lock()
 
     def _init(self):
@@ -114,6 +116,8 @@ class TuyaRC(RemoteEntity):
             return
         _LOGGER.debug("Initializing device %s (address: %s, local_key: %s, protocol_version: %s, persistent_connection: %s)...", self._dev_id, self._address, self._local_key, self._protocol_version, self._persistent_connection)
         self._device = Contrib.IRRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version), persist=self._persistent_connection)
+        _LOGGER.debug("Initializing device %s (address: %s, local_key: %s, protocol_version: %s, persistent_connection: %s)...", self._dev_id, self._address, self._local_key, self._protocol_version, self._persistent_connection)
+        self._device_RF = RFRemoteControlDevice.RFRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version), persist=self._persistent_connection)
         _LOGGER.debug("Device %s initialized.", self._dev_id)
 
     def _deinit(self):
@@ -180,7 +184,7 @@ class TuyaRC(RemoteEntity):
             self._init()
             try:
                 return self._device.receive_button(timeout)
-            except:
+            except Exception as e:
                 _LOGGER.error("Failed to receive button, exception %s: %s", type(e), e, exc_info=True)
                 raise HomeAssistantError("tinytuya library internal error, please check the logs.")
     
@@ -204,6 +208,29 @@ class TuyaRC(RemoteEntity):
                     except:
                         _LOGGER.error("Failed to send command as pulses, exception %s: %s", type(e), e, exc_info=True)
                         raise HomeAssistantError("tinytuya library internal error, please check the logs.")
+            except Exception as e:
+                self._deinit()
+                raise e
+    
+    def _receive_button_rf(self, timeout):
+        with self._lock:
+            self._init()
+            try:
+                return self._device_RF.rf_receive_button(timeout=timeout)
+            except Exception as e:
+                _LOGGER.error("Failed to receive RF button, exception %s: %s", type(e), e, exc_info=True)
+                raise HomeAssistantError("tinytuya library internal rf error, please check the logs.")
+    
+    def _send_button_rf(self, base64):
+        with self._lock:
+            try:
+                self._init()
+                try:
+                    _LOGGER.debug("Sending command as base64: '%s'", base64)
+                    return self._device_RF.rf_send_button(base64)
+                except Exception as e:
+                    _LOGGER.error("Failed to send RF button, exception %s: %s", type(e), e, exc_info=True)
+                    raise HomeAssistantError("tinytuya library internal rf error, please check the logs.")
             except Exception as e:
                 self._deinit()
                 raise e
@@ -267,9 +294,12 @@ class TuyaRC(RemoteEntity):
                     else:
                         code = cmd
                         _LOGGER.debug("Sending command, code: '%s'", code)
-                    pulses = rc_auto_encode(code)
-                    _LOGGER.debug("Command pulses: %s", pulses)
-                    await self.hass.async_add_executor_job(self._send_button, pulses)
+                    if code.startswith("rf:"):
+                        await self.hass.async_add_executor_job(self._send_button_rf, code[3:])
+                    else:
+                        pulses = rc_auto_encode(code)
+                        _LOGGER.debug("Command pulses: %s", pulses)
+                        await self.hass.async_add_executor_job(self._send_button, pulses)
                     if n < repeat - 1 and repeat_delay > 0:
                         await asyncio.sleep(repeat_delay)
         except Exception as e:
@@ -292,7 +322,7 @@ class TuyaRC(RemoteEntity):
         
         try:
             if not command: raise ValueError("You need to specify a command name to learn.")
-            if command_type != "ir": raise NotImplementedError(f'Unknown command type "{command_type}", only "ir" is supported.')
+            if command_type != "ir" and command_type != "rf": raise NotImplementedError(f'Unknown command type "{command_type}", only "ir" and "rf" is supported.')
             if alternative != None: raise ValueError('"Alternative" option is not supported.')
             if self._lock.locked():
                 raise HomeAssistantError("Device is busy, please wait and try again.")
@@ -304,7 +334,10 @@ class TuyaRC(RemoteEntity):
             )
             
             _LOGGER.debug(f"Waiting for button press...")
-            button = await self.hass.async_add_executor_job(self._receive_button, timeout)
+            if command_type == "ir":
+                button = await self.hass.async_add_executor_job(self._receive_button, timeout)
+            elif command_type == "rf":
+                button = await self.hass.async_add_executor_job(self._receive_button_rf, timeout)
             _LOGGER.debug("Button pressed: %s", button)
             if button == None: raise TimeoutError("Timeout. Please try again.")
             if isinstance(button, dict) and "Error" in button:
@@ -314,14 +347,20 @@ class TuyaRC(RemoteEntity):
                 self._deinit()
                 raise ValueError(f"Invalid response: {button}")
             
-            pulses = Contrib.IRRemoteControlDevice.base64_to_pulses(button)
-            if len(pulses) < 4:
-                raise ValueError("This IR code is too short and seems to be invalid. Please try to learn the command again.")
-            decoded = rc_auto_decode(pulses)
-            decoded_raw = rc_auto_decode(pulses, force_raw=True)
+            if command_type == "ir":
+                pulses = Contrib.IRRemoteControlDevice.base64_to_pulses(button)
+                if len(pulses) < 4:
+                    raise ValueError("This IR code is too short and seems to be invalid. Please try to learn the command again.")
+                decoded = rc_auto_decode(pulses)
+                decoded_raw = rc_auto_decode(pulses, force_raw=True)
 
-            direct_code_example = f'<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded}</pre>'
-            direct_code_example_raw = f'If code above is not working, you can try to use the raw code:\n<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded_raw}</pre>But <a href="https://github.com/ClusterM/localtuya_rc/issues">create a bug report</a> in such case, please.'
+                direct_code_example = f'<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded}</pre>'
+                direct_code_example_raw = f'If code above is not working, you can try to use the raw code:\n<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded_raw}</pre>But <a href="https://github.com/ClusterM/localtuya_rc/issues">create a bug report</a> in such case, please.'
+            elif command_type == "rf":
+                decoded = "rf:" + button
+                decoded_raw = "rfraw:" + button
+                direct_code_example = f'<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded}</pre>'
+                direct_code_example_raw = f'If code above is not working, you can try to use the raw code:\n<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded_raw}</pre>But <a href="https://github.com/ClusterM/localtuya_rc/issues">create a bug report</a> in such case, please.'
             
             if device:
                 await self._async_load_storage_files()
