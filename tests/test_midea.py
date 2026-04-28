@@ -81,25 +81,42 @@ def test_decode_rejects_broken_inverse_pair():
         rc_encoder.midea_decode(raw)
 
 
-def test_decode_rejects_mismatched_halves():
-    """If the two repeated 48-bit packets differ, decode must fail."""
-    bytes1 = [0xB2, 0x4D, 0x12, 0x12 ^ 0xFF, 0x34, 0x34 ^ 0xFF]
-    bytes2 = [0xB2, 0x4D, 0x99, 0x99 ^ 0xFF, 0x34, 0x34 ^ 0xFF]  # different B2
-    half1 = rc_encoder.pulse.distance_encode(
-        bytes1,
-        rc_encoder.MIDEA_LEADING_PULSE, rc_encoder.MIDEA_LEADING_GAP,
-        rc_encoder.MIDEA_PULSE, rc_encoder.MIDEA_GAP_0, rc_encoder.MIDEA_GAP_1,
-        48, msb_first=True,
+def test_decode_two_frame_signal_extracts_command_and_preamble():
+    """A 3-packet signal (preamble + command + command) decodes both bytes
+    of the actual command and exposes the preamble as `pa`/`pb`."""
+    preamble = rc_encoder._midea_pack(0xE0, 0x03)
+    command = rc_encoder._midea_pack(0xBF, 0xD0)
+    raw = (
+        preamble + [rc_encoder.MIDEA_INTER_GAP]
+        + command + [rc_encoder.MIDEA_INTER_GAP]
+        + command
     )
-    half2 = rc_encoder.pulse.distance_encode(
-        bytes2,
-        rc_encoder.MIDEA_LEADING_PULSE, rc_encoder.MIDEA_LEADING_GAP,
-        rc_encoder.MIDEA_PULSE, rc_encoder.MIDEA_GAP_0, rc_encoder.MIDEA_GAP_1,
-        48, msb_first=True,
+    decoded = rc_encoder.midea_decode(raw)
+    assert decoded == "a=0xBF,b=0xD0,pa=0xE0,pb=0x03"
+
+
+def test_decode_three_identical_frames_returns_simple_form():
+    """If all 3 packets are identical (no preamble), no `pa`/`pb` annotation."""
+    packet = rc_encoder._midea_pack(0xAA, 0x55)
+    raw = (
+        packet + [rc_encoder.MIDEA_INTER_GAP]
+        + packet + [rc_encoder.MIDEA_INTER_GAP]
+        + packet
     )
-    raw = half1 + [rc_encoder.MIDEA_INTER_GAP] + half2
-    with pytest.raises(ValueError, match="repeated halves differ"):
-        rc_encoder.midea_decode(raw)
+    assert rc_encoder.midea_decode(raw) == "a=0xAA,b=0x55"
+
+
+def test_encode_round_trip_with_preamble():
+    encoded = rc_encoder.midea_encode(a=0xBF, b=0xD0, pa=0xE0, pb=0x03)
+    assert len(encoded) == 99 * 3 + 2  # 3 packets, 2 inter-packet gaps
+    assert rc_encoder.midea_decode(encoded) == "a=0xBF,b=0xD0,pa=0xE0,pb=0x03"
+
+
+def test_encode_rejects_partial_preamble():
+    with pytest.raises(ValueError, match="must be provided together"):
+        rc_encoder.midea_encode(a=0x12, b=0x34, pa=0x56)
+    with pytest.raises(ValueError, match="must be provided together"):
+        rc_encoder.midea_encode(a=0x12, b=0x34, pb=0x78)
 
 
 def test_encode_round_trip_zero_payload():

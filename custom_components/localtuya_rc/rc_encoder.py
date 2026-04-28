@@ -613,48 +613,93 @@ def midea_decode(values):
             )
         return data[2], data[4]
 
-    # The signal is two identical 48-bit packets separated by an inter-packet
-    # gap (~5100µs). The first packet always occupies exactly MIDEA_HALF_LEN
-    # elements (1 leading_pulse + 1 leading_gap + 48*2 bit ticks + 1 closing
-    # pulse), so there's no need to scan for the boundary.
-    half1 = values[:MIDEA_HALF_LEN]
-    a1, b1 = decode_half(half1)
+    # The signal contains one or more 48-bit packets, each occupying exactly
+    # MIDEA_HALF_LEN elements (1 leading_pulse + 1 leading_gap + 48*2 bit
+    # ticks + 1 closing pulse), separated by ~5100µs inter-packet gaps.
+    #
+    # Some Midea remotes send a single payload packet repeated twice for
+    # redundancy. Others (observed on EAS Electric / Comfee mode-switch
+    # commands) send a "preamble" packet first, followed by the actual
+    # state packet repeated twice. Total length is therefore either
+    # MIDEA_HALF_LEN * N + (N-1) for N packets.
+    packets = []
+    pos = 0
+    while pos + MIDEA_HALF_LEN <= len(values):
+        try:
+            packets.append(decode_half(values[pos:pos + MIDEA_HALF_LEN]))
+        except ValueError:
+            # Stop on first malformed packet (e.g., truncated capture).
+            break
+        # Skip the inter-packet gap (1 element) before the next packet.
+        pos += MIDEA_HALF_LEN + 1
 
-    # If a second packet was captured, validate that it matches the first.
-    # The element at index MIDEA_HALF_LEN is the inter-message gap; the
-    # second packet starts at MIDEA_HALF_LEN + 1.
-    if len(values) >= MIDEA_HALF_LEN * 2:
-        half2 = values[MIDEA_HALF_LEN + 1:]
-        if len(half2) >= MIDEA_HALF_LEN - 1:
-            a2, b2 = decode_half(half2)
-            if (a1, b1) != (a2, b2):
-                raise ValueError(
-                    f"Midea: repeated halves differ: "
-                    f"(0x{a1:02X},0x{b1:02X}) vs (0x{a2:02X},0x{b2:02X})"
-                )
+    if not packets:
+        # Re-raise the original error with full context.
+        decode_half(values[:MIDEA_HALF_LEN])  # raises
+        raise ValueError("Midea: no valid packets")  # unreachable
 
-    return f"a=0x{a1:02X},b=0x{b1:02X}"
+    # The "actual command" payload is the LAST distinct packet — preamble
+    # frames precede it, redundancy repeats follow it. If all packets are
+    # identical we return them; if there's a leading preamble that differs,
+    # we still take the last (which is the state the AC should land in).
+    a, b = packets[-1]
+    if len(packets) > 1 and packets[0] != packets[-1]:
+        # There's a preamble. Expose it via a `preamble=` annotation so the
+        # encoder can faithfully reproduce the original two-frame sequence.
+        pa, pb = packets[0]
+        return f"a=0x{a:02X},b=0x{b:02X},pa=0x{pa:02X},pb=0x{pb:02X}"
+    return f"a=0x{a:02X},b=0x{b:02X}"
 
-def midea_encode(a, b):
-    """Encode a Midea AC command from two payload bytes (MSB convention)."""
-    if not (0x00 <= a <= 0xFF):
-        raise ValueError("Midea: 'a' must be in range 0x00-0xFF")
-    if not (0x00 <= b <= 0xFF):
-        raise ValueError("Midea: 'b' must be in range 0x00-0xFF")
-
+def _midea_pack(a, b):
+    """Pack a 48-bit Midea packet for payload bytes (a, b) in MSB convention."""
     bytes_msb = [
         MIDEA_VENDOR_MSB, MIDEA_VENDOR_MSB ^ 0xFF,
         a & 0xFF, (a ^ 0xFF) & 0xFF,
         b & 0xFF, (b ^ 0xFF) & 0xFF,
     ]
-    half = pulse.distance_encode(
+    return pulse.distance_encode(
         bytes_msb,
         MIDEA_LEADING_PULSE, MIDEA_LEADING_GAP,
         MIDEA_PULSE, MIDEA_GAP_0, MIDEA_GAP_1,
         48, msb_first=True,
     )
-    # Repeat the packet verbatim with an inter-packet gap.
-    return half + [MIDEA_INTER_GAP] + half
+
+def midea_encode(a, b, pa=None, pb=None):
+    """Encode a Midea AC command from one or two payload frames.
+
+    Parameters:
+        a, b: payload bytes of the command frame (MSB convention).
+        pa, pb: optional preamble frame, sent BEFORE the command. Some
+            Midea-OEM remotes (observed on EAS Electric / Comfee mode-
+            change buttons) require a preamble announcing the new mode
+            before the payload is accepted. If only a/b are provided,
+            the simple two-repeat form is used.
+    """
+    if not (0x00 <= a <= 0xFF):
+        raise ValueError("Midea: 'a' must be in range 0x00-0xFF")
+    if not (0x00 <= b <= 0xFF):
+        raise ValueError("Midea: 'b' must be in range 0x00-0xFF")
+    if (pa is None) != (pb is None):
+        raise ValueError("Midea: 'pa' and 'pb' must be provided together")
+
+    cmd_packet = _midea_pack(a, b)
+
+    if pa is not None:
+        if not (0x00 <= pa <= 0xFF):
+            raise ValueError("Midea: 'pa' must be in range 0x00-0xFF")
+        if not (0x00 <= pb <= 0xFF):
+            raise ValueError("Midea: 'pb' must be in range 0x00-0xFF")
+        preamble = _midea_pack(pa, pb)
+        # Sequence: preamble + gap + command + gap + command (matches the
+        # 299-element multi-frame structure observed in real captures).
+        return (
+            preamble + [MIDEA_INTER_GAP]
+            + cmd_packet + [MIDEA_INTER_GAP]
+            + cmd_packet
+        )
+
+    # Single-frame command repeated twice for redundancy (199 elements).
+    return cmd_packet + [MIDEA_INTER_GAP] + cmd_packet
 
 
 # Dictionary of supported RC converters
