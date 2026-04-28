@@ -494,6 +494,9 @@ AC_PULSE = 560
 AC_GAP_0 = 560
 AC_GAP_1 = 1690
 
+# Gap between the two repeated 48-bit packets in Midea-family protocols.
+AC_INTER_PACKET_GAP = 5100
+
 def air_conditioner_decode(values):
     if len(values) < 100:
         raise ValueError("Invalid AC data: too short")
@@ -536,6 +539,124 @@ def air_conditioner_encode(addr, cmd, double=0, closing=NEC_GAP_0):
     return v
 
 
+"""
+Midea AC protocol (48-bit, packet repeated as-is, no inter-packet inversion).
+
+This is the variant used by Midea-OEM rebranders such as EAS Electric, MDV,
+Comfee, Pioneer System, Kaysun, Trotec, Lennox, and many no-name Chinese
+splits. It differs from the IRremoteESP8266 "Midea" protocol (which sends
+the second 48-bit packet bit-inverted); here both packets are identical.
+
+Frame structure (MSB-first on the wire):
+    Byte 0: 0xB2  - Midea AC vendor marker (always)
+    Byte 1: 0x4D  - inverse of byte 0
+    Byte 2: payload byte A (mode + fan + power, exact mapping is OEM-specific)
+    Byte 3: ~A   - inverse
+    Byte 4: payload byte B (temperature + swing/sleep flags)
+    Byte 5: ~B   - inverse
+
+Useful payload is just 16 bits (A and B). The flipper_rc API exposes them
+as `a` and `b` so any Midea-family AC can be controlled once two raw
+samples have been captured and mapped to (mode, temp, fan, power) on a
+case-by-case basis. A field-level helper can be added on top once the
+OEM-specific mapping is known.
+
+Wire format (timings in µs):
+    Header pulse: ~4500
+    Header gap:   ~4500
+    Bit-0:        ~560 pulse + ~560 gap
+    Bit-1:        ~560 pulse + ~1690 gap
+    Inter-packet gap: ~5100 (between the two identical 48-bit packets)
+    Closing pulse: ~560
+
+References:
+    - IRremoteESP8266 ir_Midea.h / ir_Midea.cpp
+    - Midea protocol spreadsheet:
+      https://docs.google.com/spreadsheets/d/1TZh4jWrx4h9zzpYUI9aYXMl1fYOiqu-xVuOOMqagxrs
+    - The 48-bit-only variant captured on EAS Electric EADVA25NT2 splits.
+"""
+MIDEA_LEADING_PULSE = 4500
+MIDEA_LEADING_GAP = 4500
+MIDEA_PULSE = 560
+MIDEA_GAP_0 = 560
+MIDEA_GAP_1 = 1690
+MIDEA_INTER_GAP = 5100
+MIDEA_VENDOR_MSB = 0xB2  # B0 in MSB-first reading
+MIDEA_HALF_LEN = 99      # 1 leading_pulse + 1 leading_gap + 48*2 bit ticks + 1 closing_pulse
+
+def midea_decode(values):
+    """Decode a 48-bit Midea AC packet (with one repetition).
+
+    Returns "a=0xXX,b=0xYY" on success. Raises ValueError if the signal
+    does not match the Midea structure (vendor byte, inverse-pair check,
+    matching repeated half).
+    """
+    if len(values) < MIDEA_HALF_LEN:
+        raise ValueError(f"Midea: too short, need at least {MIDEA_HALF_LEN} elements")
+
+    def decode_half(half):
+        data = pulse.distance_decode(
+            half,
+            MIDEA_LEADING_PULSE, MIDEA_LEADING_GAP,
+            MIDEA_PULSE, MIDEA_GAP_0, MIDEA_GAP_1,
+            48, msb_first=True,
+        )
+        if data[0] != data[1] ^ 0xFF:
+            raise ValueError("Midea: invalid inverse pair (B0/B1)")
+        if data[2] != data[3] ^ 0xFF:
+            raise ValueError("Midea: invalid inverse pair (B2/B3)")
+        if data[4] != data[5] ^ 0xFF:
+            raise ValueError("Midea: invalid inverse pair (B4/B5)")
+        if data[0] != MIDEA_VENDOR_MSB:
+            raise ValueError(
+                f"Midea: vendor byte expected 0x{MIDEA_VENDOR_MSB:02X}, got 0x{data[0]:02X}"
+            )
+        return data[2], data[4]
+
+    # The signal is two identical 48-bit packets separated by an inter-packet
+    # gap (~5100µs). The first packet always occupies exactly MIDEA_HALF_LEN
+    # elements (1 leading_pulse + 1 leading_gap + 48*2 bit ticks + 1 closing
+    # pulse), so there's no need to scan for the boundary.
+    half1 = values[:MIDEA_HALF_LEN]
+    a1, b1 = decode_half(half1)
+
+    # If a second packet was captured, validate that it matches the first.
+    # The element at index MIDEA_HALF_LEN is the inter-message gap; the
+    # second packet starts at MIDEA_HALF_LEN + 1.
+    if len(values) >= MIDEA_HALF_LEN * 2:
+        half2 = values[MIDEA_HALF_LEN + 1:]
+        if len(half2) >= MIDEA_HALF_LEN - 1:
+            a2, b2 = decode_half(half2)
+            if (a1, b1) != (a2, b2):
+                raise ValueError(
+                    f"Midea: repeated halves differ: "
+                    f"(0x{a1:02X},0x{b1:02X}) vs (0x{a2:02X},0x{b2:02X})"
+                )
+
+    return f"a=0x{a1:02X},b=0x{b1:02X}"
+
+def midea_encode(a, b):
+    """Encode a Midea AC command from two payload bytes (MSB convention)."""
+    if not (0x00 <= a <= 0xFF):
+        raise ValueError("Midea: 'a' must be in range 0x00-0xFF")
+    if not (0x00 <= b <= 0xFF):
+        raise ValueError("Midea: 'b' must be in range 0x00-0xFF")
+
+    bytes_msb = [
+        MIDEA_VENDOR_MSB, MIDEA_VENDOR_MSB ^ 0xFF,
+        a & 0xFF, (a ^ 0xFF) & 0xFF,
+        b & 0xFF, (b ^ 0xFF) & 0xFF,
+    ]
+    half = pulse.distance_encode(
+        bytes_msb,
+        MIDEA_LEADING_PULSE, MIDEA_LEADING_GAP,
+        MIDEA_PULSE, MIDEA_GAP_0, MIDEA_GAP_1,
+        48, msb_first=True,
+    )
+    # Repeat the packet verbatim with an inter-packet gap.
+    return half + [MIDEA_INTER_GAP] + half
+
+
 # Dictionary of supported RC converters
 RC_CONVERTERS = {
     "nec42": (nec42_encode, nec42_decode),
@@ -551,6 +672,7 @@ RC_CONVERTERS = {
     "kaseikyo": (kaseikyo_encode, kaseikyo_decode),
     "rca": (rca_encode, rca_decode),
     "pioneer": (pioneer_encode, pioneer_decode),
+    "midea": (midea_encode, midea_decode),
     "ac": (air_conditioner_encode, air_conditioner_decode),
 }
 

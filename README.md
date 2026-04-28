@@ -231,6 +231,8 @@ The `toggle` parameter can be 0 or 1 and is optional. It helps to distinguish be
 
 - **ac**: Some air conditioners use this protocol (at least Gorenie and MDV). Usually 16-bit command contains 4-bit mode, 4-bit fan speed, 4-bit temperature and some other bits. Requires `addr` and `cmd`. `double` (repeat signal two times) and `closing` (add closing signal) parameters are optional.
 
+- **midea**: Midea-family AC protocol (48-bit, packet repeated as-is). Used by Midea-OEM rebranders such as Pioneer System, Comfee, Kaysun, Trotec, Lennox, EAS Electric, MDV, and many no-name Chinese splits. The frame contains a fixed `0xB2` vendor marker, two payload bytes `a` and `b`, and inverse copies of all three. Requires `a` (mode/fan/power byte) and `b` (temperature/swing byte) — the exact field layout within these bytes is OEM-specific, so the integration exposes them as raw bytes and leaves the per-OEM mapping to the user. Use `remote.learn_command` to capture the bytes for each combination of (mode, temp, fan) you want to control. The `auto-decode` step picks `midea` over `ac` whenever the vendor byte equals `0xB2`. Sample: `midea:a=0x7B,b=0xE0` (a real "Power off" command from EAS Electric EADVA25NT2).
+
 
 ## Credits
 
