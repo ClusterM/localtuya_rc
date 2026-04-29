@@ -176,3 +176,141 @@ def test_auto_encode_round_trip():
     cmd_str = "midea:a=0x7B,b=0xE0"
     encoded = rc_encoder.rc_auto_encode(cmd_str)
     assert rc_encoder.rc_auto_decode(encoded) == cmd_str
+
+
+# === Field-level encoding ===
+#
+# Reference table — confirmed against real captures from EAS Electric
+# EADVA25NT2 (Midea OEM):
+#
+#   Power off                  → a=0x7B b=0xE0
+#   Auto 22°  fan=auto         → a=0x1F b=0x78
+#   Auto 24°  fan=auto         → a=0x1F b=0x48
+#   Cool 22°  fan=auto         → a=0xBF b=0x70
+#   Cool 22°  fan=low          → a=0x9F b=0x70
+#   Cool 22°  fan=med          → a=0x5F b=0x70
+#   Cool 22°  fan=high         → a=0x3F b=0x70
+#   Cool 26°  fan=auto         → a=0xBF b=0xD0
+#   Heat 22°  fan=auto         → a=0xBF b=0x7C
+
+
+@pytest.mark.parametrize("mode,temp,fan,expected_a,expected_b", [
+    # Cool mode, all fans, temp 22
+    ("cool", 22, "auto", 0xBF, 0x70),
+    ("cool", 22, "low",  0x9F, 0x70),
+    ("cool", 22, "med",  0x5F, 0x70),
+    ("cool", 22, "high", 0x3F, 0x70),
+    # Cool mode, temp variations
+    ("cool", 26, "auto", 0xBF, 0xD0),
+    # Heat mode
+    ("heat", 22, "auto", 0xBF, 0x7C),
+    # Auto mode (fan is forced, but accept any value for caller convenience)
+    ("auto", 22, "auto", 0x1F, 0x78),
+    ("auto", 24, "auto", 0x1F, 0x48),
+])
+def test_fields_to_bytes_matches_real_captures(mode, temp, fan, expected_a, expected_b):
+    a, b = rc_encoder._midea_fields_to_bytes(mode=mode, temp=temp, fan=fan)
+    assert (a, b) == (expected_a, expected_b), (
+        f"mode={mode}, temp={temp}, fan={fan} produced "
+        f"a=0x{a:02X}, b=0x{b:02X}, expected a=0x{expected_a:02X}, b=0x{expected_b:02X}"
+    )
+
+
+def test_fields_to_bytes_power_off_returns_magic_bytes():
+    a, b = rc_encoder._midea_fields_to_bytes(power="off")
+    assert (a, b) == (0x7B, 0xE0)
+    a, b = rc_encoder._midea_fields_to_bytes(power=False)
+    assert (a, b) == (0x7B, 0xE0)
+    # Power=off ignores other field params.
+    a, b = rc_encoder._midea_fields_to_bytes(mode="cool", temp=24, fan="high", power="off")
+    assert (a, b) == (0x7B, 0xE0)
+
+
+def test_fields_to_bytes_defaults():
+    """Defaults: mode=cool, temp=22, fan=auto, power=on."""
+    a, b = rc_encoder._midea_fields_to_bytes()
+    assert (a, b) == (0xBF, 0x70)
+
+
+def test_fields_to_bytes_rejects_bad_input():
+    with pytest.raises(ValueError, match="unsupported mode"):
+        rc_encoder._midea_fields_to_bytes(mode="freeze")
+    with pytest.raises(ValueError, match="unsupported fan"):
+        rc_encoder._midea_fields_to_bytes(mode="cool", fan="turbo")
+    with pytest.raises(ValueError, match="out of supported range"):
+        rc_encoder._midea_fields_to_bytes(mode="cool", temp=99)
+
+
+def test_bytes_to_fields_round_trip_for_all_known_combos():
+    """For every (mode, temp, fan) combo we know how to encode, the bytes
+    decoded back must yield the same fields."""
+    for mode in ("cool", "heat", "auto"):
+        for temp in (17, 22, 24, 26, 30):
+            fans = ("auto",) if mode == "auto" else ("auto", "low", "med", "high")
+            for fan in fans:
+                a, b = rc_encoder._midea_fields_to_bytes(mode=mode, temp=temp, fan=fan)
+                fields = rc_encoder.midea_bytes_to_fields(a, b)
+                assert fields == {
+                    "power": True, "mode": mode, "temp": temp, "fan": fan,
+                }, f"round-trip failed for ({mode}, {temp}, {fan}): got {fields}"
+
+
+def test_bytes_to_fields_recognizes_power_off():
+    assert rc_encoder.midea_bytes_to_fields(0x7B, 0xE0) == {"power": False}
+
+
+def test_midea_encode_field_form_matches_byte_form():
+    """midea:mode=cool,temp=22,fan=auto,power=on must produce bytes
+    identical to midea:a=0xBF,b=0x70."""
+    by_fields = rc_encoder.midea_encode(mode="cool", temp=22, fan="auto", power="on")
+    by_bytes = rc_encoder.midea_encode(a=0xBF, b=0x70)
+    assert by_fields == by_bytes
+
+
+def test_midea_encode_rejects_mixed_forms():
+    with pytest.raises(ValueError, match="not both"):
+        rc_encoder.midea_encode(a=0x12, b=0x34, mode="cool")
+
+
+def test_midea_encode_sleep_shorthand_matches_explicit_preamble():
+    """midea:mode=cool,sleep=on must equal midea:a=...,b=...,pa=0xE0,pb=0x03."""
+    by_sleep = rc_encoder.midea_encode(mode="cool", temp=22, fan="auto", sleep="on")
+    by_explicit = rc_encoder.midea_encode(a=0xBF, b=0x70, pa=0xE0, pb=0x03)
+    assert by_sleep == by_explicit
+
+
+def test_midea_encode_sleep_off_omits_preamble():
+    by_sleep_off = rc_encoder.midea_encode(mode="cool", temp=22, fan="auto", sleep="off")
+    by_no_sleep = rc_encoder.midea_encode(mode="cool", temp=22, fan="auto")
+    assert by_sleep_off == by_no_sleep
+
+
+def test_midea_encode_sleep_with_pa_raises():
+    with pytest.raises(ValueError, match="cannot use both"):
+        rc_encoder.midea_encode(a=0xBF, b=0x70, pa=0xE0, pb=0x03, sleep="on")
+
+
+@pytest.mark.parametrize("cmd_str,expected_ab", [
+    ("midea:mode=cool,temp=22,fan=auto", (0xBF, 0x70)),
+    ("midea:mode=cool,temp=26,fan=auto", (0xBF, 0xD0)),
+    ("midea:mode=heat,temp=22,fan=auto", (0xBF, 0x7C)),
+    ("midea:mode=auto,temp=24", (0x1F, 0x48)),
+    ("midea:power=off", (0x7B, 0xE0)),
+])
+def test_rc_auto_encode_field_form_round_trip(cmd_str, expected_ab):
+    """rc_auto_encode must accept field-level midea strings and produce
+    a signal that decodes to the matching a/b bytes."""
+    encoded = rc_encoder.rc_auto_encode(cmd_str)
+    decoded = rc_encoder.midea_decode(encoded)
+    a_str, b_str = decoded.split(",")[:2]
+    a = int(a_str.split("=")[1], 0)
+    b = int(b_str.split("=")[1], 0)
+    assert (a, b) == expected_ab
+
+
+def test_rc_auto_encode_sleep_string():
+    """rc_auto_encode must thread the `sleep=on` string through to midea_encode
+    and produce the 3-frame signal with the standard preamble."""
+    encoded = rc_encoder.rc_auto_encode("midea:mode=cool,temp=22,fan=auto,sleep=on")
+    decoded = rc_encoder.midea_decode(encoded)
+    assert decoded == "a=0xBF,b=0x70,pa=0xE0,pb=0x03"

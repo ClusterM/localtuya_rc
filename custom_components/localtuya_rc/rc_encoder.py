@@ -584,6 +584,61 @@ MIDEA_INTER_GAP = 5100
 MIDEA_VENDOR_MSB = 0xB2  # B0 in MSB-first reading
 MIDEA_HALF_LEN = 99      # 1 leading_pulse + 1 leading_gap + 48*2 bit ticks + 1 closing_pulse
 
+# Field-level encoding tables, derived empirically from EAS Electric
+# EADVA25NT2 captures and matched against the IRremoteESP8266 Midea
+# 4-bit Gray-coded temperature table.
+#
+# Byte b (MSB):
+#     bits 7..4 — Gray-coded temperature (17..30°C)
+#     bits 3..2 — mode
+#     bits 1..0 — always 0 in observed samples
+#
+# Byte a (MSB):
+#     bits 7..5 — fan code (in cool/heat); auto-mode forces 0b000
+#     bit  4    — always 1 when on
+#     bit  3    — always 1
+#     bit  2    — power (1 = on, 0 = off)
+#     bit  1    — always 1
+#     bit  0    — always 1
+#
+# "Power off" is sent as a fixed magic value (0x7B, 0xE0); this matches
+# what the original remote emits and the AC accepts. Some commands (e.g.
+# enabling Sleep mode) require an additional preamble frame (0xE0, 0x03)
+# transmitted before the state frame.
+MIDEA_TEMP_GRAY = {
+    17: 0x0, 18: 0x1, 19: 0x3, 20: 0x2, 21: 0x6, 22: 0x7, 23: 0x5,
+    24: 0x4, 25: 0xC, 26: 0xD, 27: 0x9, 28: 0x8, 29: 0xA, 30: 0xB,
+}
+MIDEA_TEMP_REVERSE = {v: k for k, v in MIDEA_TEMP_GRAY.items()}
+
+MIDEA_MODE_BITS = {
+    "cool": 0b00,
+    "auto": 0b10,
+    "heat": 0b11,
+    # "dry" and "fan" not yet observed; their bit values likely complete
+    # the 2-bit space (0b01 is the only remaining slot).
+}
+MIDEA_MODE_REVERSE = {v: k for k, v in MIDEA_MODE_BITS.items()}
+
+# Fan encoding for cool/heat modes (bits 7..5 of a). In auto mode the
+# remote forces the fan code to 0b000 — the AC decides fan speed itself.
+MIDEA_FAN_BITS = {
+    "auto": 0b101,
+    "low":  0b100,
+    "med":  0b010,
+    "high": 0b001,
+}
+MIDEA_FAN_REVERSE = {v: k for k, v in MIDEA_FAN_BITS.items()}
+
+# Magic bytes for the "power off" command.
+MIDEA_OFF_A = 0x7B
+MIDEA_OFF_B = 0xE0
+
+# Preamble for the Sleep-mode toggle. Observed prepended to a normal
+# state frame whenever the user pressed the Sleep button on the remote.
+MIDEA_SLEEP_PA = 0xE0
+MIDEA_SLEEP_PB = 0x03
+
 def midea_decode(values):
     """Decode a 48-bit Midea AC packet (with one repetition).
 
@@ -650,6 +705,121 @@ def midea_decode(values):
         return f"a=0x{a:02X},b=0x{b:02X},pa=0x{pa:02X},pb=0x{pb:02X}"
     return f"a=0x{a:02X},b=0x{b:02X}"
 
+def _midea_normalize_bool(value, name):
+    """Coerce on/off/1/0/true/false (str/int/bool) into bool."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return bool(value)
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in ("on", "1", "true", "yes"):
+            return True
+        if s in ("off", "0", "false", "no"):
+            return False
+    raise ValueError(f"Midea: unsupported value for {name}: {value!r}")
+
+
+def _midea_fields_to_bytes(mode=None, temp=None, fan=None, power=None):
+    """Convert Midea (mode, temp, fan, power) into the (a, b) payload bytes.
+
+    Defaults: mode='cool', temp=22, fan='auto', power='on'. When power=off
+    the magic off command is returned regardless of other parameters.
+    """
+    if power is None:
+        power_on = True
+    else:
+        power_on = _midea_normalize_bool(power, "power")
+
+    if not power_on:
+        return MIDEA_OFF_A, MIDEA_OFF_B
+
+    if mode is None:
+        mode = "cool"
+    if isinstance(mode, str):
+        mode_key = mode.strip().lower()
+    else:
+        raise ValueError(f"Midea: mode must be a string, got {mode!r}")
+    if mode_key not in MIDEA_MODE_BITS:
+        raise ValueError(
+            f"Midea: unsupported mode {mode!r}, expected one of "
+            f"{sorted(MIDEA_MODE_BITS)}"
+        )
+    mode_bits = MIDEA_MODE_BITS[mode_key]
+
+    if temp is None:
+        temp = 22
+    temp_int = int(temp)
+    if temp_int not in MIDEA_TEMP_GRAY:
+        raise ValueError(
+            f"Midea: temp {temp_int} out of supported range 17-30"
+        )
+    temp_gray = MIDEA_TEMP_GRAY[temp_int]
+
+    if mode_key == "auto":
+        # Auto mode locks fan to "AC decides"; the wire bits are 0b000.
+        fan_bits = 0b000
+    else:
+        if fan is None:
+            fan = "auto"
+        if isinstance(fan, str):
+            fan_key = fan.strip().lower()
+        else:
+            raise ValueError(f"Midea: fan must be a string, got {fan!r}")
+        if fan_key not in MIDEA_FAN_BITS:
+            raise ValueError(
+                f"Midea: unsupported fan {fan!r}, expected one of "
+                f"{sorted(MIDEA_FAN_BITS)}"
+            )
+        fan_bits = MIDEA_FAN_BITS[fan_key]
+
+    # Bits 4,3,1,0 of `a` are always 1 in observed samples; bit 2 is power.
+    # Result: lower 5 bits = 0b11111 = 0x1F when on.
+    a = (fan_bits << 5) | 0x1F
+    # Bits 1,0 of `b` are always 0 in observed samples; bits 3,2 = mode.
+    b = (temp_gray << 4) | (mode_bits << 2)
+    return a, b
+
+
+def midea_bytes_to_fields(a, b):
+    """Decode (a, b) bytes into a dict of (mode, temp, fan, power) fields.
+
+    Returns a dict of recognized fields plus, for unrecognized bit
+    patterns, an `unknown` list with the offending field names. Useful
+    for diagnostics: the 'a/b' interface is the source of truth, this
+    helper just gives you semantic context.
+    """
+    if a == MIDEA_OFF_A and b == MIDEA_OFF_B:
+        return {"power": False}
+
+    fields = {"power": bool((a >> 2) & 1)}
+    unknown = []
+
+    mode_bits = (b >> 2) & 0b11
+    if mode_bits in MIDEA_MODE_REVERSE:
+        fields["mode"] = MIDEA_MODE_REVERSE[mode_bits]
+    else:
+        unknown.append(f"mode_bits=0b{mode_bits:02b}")
+
+    temp_gray = (b >> 4) & 0xF
+    if temp_gray in MIDEA_TEMP_REVERSE:
+        fields["temp"] = MIDEA_TEMP_REVERSE[temp_gray]
+    else:
+        unknown.append(f"temp_gray=0x{temp_gray:X}")
+
+    fan_bits = (a >> 5) & 0b111
+    if fields.get("mode") == "auto":
+        fields["fan"] = "auto"
+    elif fan_bits in MIDEA_FAN_REVERSE:
+        fields["fan"] = MIDEA_FAN_REVERSE[fan_bits]
+    else:
+        unknown.append(f"fan_bits=0b{fan_bits:03b}")
+
+    if unknown:
+        fields["unknown"] = unknown
+    return fields
+
+
 def _midea_pack(a, b):
     """Pack a 48-bit Midea packet for payload bytes (a, b) in MSB convention."""
     bytes_msb = [
@@ -664,23 +834,51 @@ def _midea_pack(a, b):
         48, msb_first=True,
     )
 
-def midea_encode(a, b, pa=None, pb=None):
-    """Encode a Midea AC command from one or two payload frames.
+def midea_encode(a=None, b=None, pa=None, pb=None,
+                 mode=None, temp=None, fan=None, power=None, sleep=None):
+    """Encode a Midea AC command.
 
-    Parameters:
-        a, b: payload bytes of the command frame (MSB convention).
-        pa, pb: optional preamble frame, sent BEFORE the command. Some
-            Midea-OEM remotes (observed on EAS Electric / Comfee mode-
-            change buttons) require a preamble announcing the new mode
-            before the payload is accepted. If only a/b are provided,
-            the simple two-repeat form is used.
+    Two parameter forms (mutually exclusive):
+        Byte-level:  pass `a` and `b` (raw payload bytes).
+        Field-level: pass `mode` ("cool"/"heat"/"auto"), `temp` (17-30),
+                     `fan` ("auto"/"low"/"med"/"high"), and `power`
+                     ("on"/"off"). Sensible defaults apply.
+
+    Optional preamble frame (sent before the state frame):
+        pa/pb: explicit preamble bytes.
+        sleep: shorthand — when truthy, prepends the standard sleep
+               preamble (0xE0, 0x03). Mutually exclusive with pa/pb.
     """
+    field_form = any(v is not None for v in (mode, temp, fan, power))
+    byte_form = a is not None or b is not None
+    if field_form and byte_form:
+        raise ValueError(
+            "Midea: pass either (a,b) or (mode,temp,fan,power), not both"
+        )
+
+    if field_form:
+        a, b = _midea_fields_to_bytes(
+            mode=mode, temp=temp, fan=fan, power=power
+        )
+    elif a is None or b is None:
+        raise ValueError(
+            "Midea: must provide either (a,b) or field-level parameters"
+        )
+
     if not (0x00 <= a <= 0xFF):
         raise ValueError("Midea: 'a' must be in range 0x00-0xFF")
     if not (0x00 <= b <= 0xFF):
         raise ValueError("Midea: 'b' must be in range 0x00-0xFF")
     if (pa is None) != (pb is None):
         raise ValueError("Midea: 'pa' and 'pb' must be provided together")
+
+    if sleep is not None:
+        if _midea_normalize_bool(sleep, "sleep"):
+            if pa is not None or pb is not None:
+                raise ValueError(
+                    "Midea: cannot use both `sleep=on` and explicit pa/pb"
+                )
+            pa, pb = MIDEA_SLEEP_PA, MIDEA_SLEEP_PB
 
     cmd_packet = _midea_pack(a, b)
 
@@ -770,15 +968,24 @@ def rc_auto_encode(s):
         ValueError: If the input string is not in the correct format, or if the format identifier
                     is unknown.
     """
+    def _coerce(v):
+        # Try int first (handles 0xAB, 0b101, 42); fall back to the raw
+        # string so encoders that accept named parameters (e.g. midea
+        # mode="cool") receive them unchanged.
+        try:
+            return int(v, 0)
+        except (ValueError, TypeError):
+            return v
+
     try:
         fmt, data = s.split(":", 1)
         if fmt == "raw":
             return [int(v, 0) for v in data.split(",")]
         if fmt == "tuya":
-            return data # raw base64 Tuya-format
+            return data  # raw base64 Tuya-format
         data = dict(v.split("=") for v in data.split(","))
-        data = {k: int(v, 0) for k, v in data.items()}
-    except:
+        data = {k: _coerce(v) for k, v in data.items()}
+    except Exception:
         raise ValueError(f"Invalid command format: {s}")
     if fmt not in RC_CONVERTERS:
         raise ValueError(f"Unknown format: {fmt}")
