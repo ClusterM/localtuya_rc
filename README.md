@@ -241,11 +241,11 @@ The `toggle` parameter can be 0 or 1 and is optional. It helps to distinguish be
     - `midea:a=0xBF,b=0x70,pa=0xE0,pb=0x03` — same with the Sleep-mode preamble.
 
   - **Field-level** (human-readable; auto-derives `a`/`b` from the empirical Midea field map):
-    - `midea:mode=cool,temp=22,fan=auto` — defaults: `power=on`. Modes: `cool`, `heat`, `auto`. Temps: 17–30°C. Fans: `auto`, `low`, `med`, `high` (ignored when `mode=auto`).
+    - `midea:mode=cool,temp=22,fan=auto` — defaults: `power=on`. Modes: `cool`, `heat`, `auto`, `dry`, `fan`. Temps: 17–30°C. Fans: `auto`, `low`, `med`, `high`. In `auto` and `dry` modes the AC controls the fan and the user's `fan` value is ignored. In `fan` mode the user's `temp` is ignored.
     - `midea:power=off` — power off shortcut (returns the magic bytes).
     - `midea:mode=cool,temp=22,sleep=on` — same as above but with the standard sleep preamble (`pa=0xE0,pb=0x03`).
 
-  Field semantics were derived empirically from EAS Electric EADVA25NT2 captures and matched against the IRremoteESP8266 4-bit Gray-coded temperature table. They should work for any Midea-OEM 48-bit-variant remote, but if your AC ignores the field-level command, capture the raw bytes via `remote.learn_command` and use the byte-level form. The `dry` and `fan` modes are not yet mapped (only the bit slot 0b01 in the mode field remains unobserved).
+  Field semantics were derived empirically from EAS Electric EADVA25NT2 captures and matched against the IRremoteESP8266 4-bit Gray-coded temperature table. They should work for any Midea-OEM 48-bit-variant remote, but if your AC ignores the field-level command, capture the raw bytes via `remote.learn_command` and use the byte-level form.
 
 
 ## Credits

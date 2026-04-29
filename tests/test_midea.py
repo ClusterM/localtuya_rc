@@ -207,6 +207,12 @@ def test_auto_encode_round_trip():
     # Auto mode (fan is forced, but accept any value for caller convenience)
     ("auto", 22, "auto", 0x1F, 0x78),
     ("auto", 24, "auto", 0x1F, 0x48),
+    # Heat 25 — temp Gray code 0xC, mode 0b11
+    ("heat", 25, "auto", 0xBF, 0xCC),
+    # Dry mode (fan locked to AC-controlled, like auto)
+    ("dry",  24, "auto", 0x1F, 0x44),
+    # Fan mode (temp ignored, sentinel 0xE)
+    ("fan",  None, "auto", 0xBF, 0xE4),
 ])
 def test_fields_to_bytes_matches_real_captures(mode, temp, fan, expected_a, expected_b):
     a, b = rc_encoder._midea_fields_to_bytes(mode=mode, temp=temp, fan=fan)
@@ -244,15 +250,31 @@ def test_fields_to_bytes_rejects_bad_input():
 def test_bytes_to_fields_round_trip_for_all_known_combos():
     """For every (mode, temp, fan) combo we know how to encode, the bytes
     decoded back must yield the same fields."""
-    for mode in ("cool", "heat", "auto"):
+    for mode in ("cool", "heat"):
         for temp in (17, 22, 24, 26, 30):
-            fans = ("auto",) if mode == "auto" else ("auto", "low", "med", "high")
-            for fan in fans:
+            for fan in ("auto", "low", "med", "high"):
                 a, b = rc_encoder._midea_fields_to_bytes(mode=mode, temp=temp, fan=fan)
                 fields = rc_encoder.midea_bytes_to_fields(a, b)
                 assert fields == {
                     "power": True, "mode": mode, "temp": temp, "fan": fan,
                 }, f"round-trip failed for ({mode}, {temp}, {fan}): got {fields}"
+
+    # Auto / dry: fan is locked to "auto" (AC decides)
+    for mode in ("auto", "dry"):
+        for temp in (17, 22, 24, 26, 30):
+            a, b = rc_encoder._midea_fields_to_bytes(mode=mode, temp=temp)
+            fields = rc_encoder.midea_bytes_to_fields(a, b)
+            assert fields == {
+                "power": True, "mode": mode, "temp": temp, "fan": "auto",
+            }, f"round-trip failed for ({mode}, {temp}): got {fields}"
+
+    # Fan mode: temp is omitted from the decoded output (sentinel 0xE).
+    for fan in ("auto", "low", "med", "high"):
+        a, b = rc_encoder._midea_fields_to_bytes(mode="fan", fan=fan)
+        fields = rc_encoder.midea_bytes_to_fields(a, b)
+        assert fields == {
+            "power": True, "mode": "fan", "fan": fan,
+        }, f"round-trip failed for fan/{fan}: got {fields}"
 
 
 def test_bytes_to_fields_recognizes_power_off():

@@ -613,15 +613,31 @@ MIDEA_TEMP_REVERSE = {v: k for k, v in MIDEA_TEMP_GRAY.items()}
 
 MIDEA_MODE_BITS = {
     "cool": 0b00,
-    "auto": 0b10,
     "heat": 0b11,
-    # "dry" and "fan" not yet observed; their bit values likely complete
-    # the 2-bit space (0b01 is the only remaining slot).
+    "auto": 0b10,
+    # Both "dry" and "fan" share mode_bits=0b01 — they're disambiguated
+    # by fan_bits in byte a:
+    #   dry:  mode_bits=01 + fan_bits=000 (locked, AC decides)
+    #   fan:  mode_bits=01 + fan_bits=any (user-selectable, like cool/heat)
+    "dry":  0b01,
+    "fan":  0b01,
 }
-MIDEA_MODE_REVERSE = {v: k for k, v in MIDEA_MODE_BITS.items()}
+# Note: MIDEA_MODE_REVERSE intentionally NOT a simple dict-reverse —
+# `dry` and `fan` collide on 0b01 and need fan_bits to disambiguate.
 
-# Fan encoding for cool/heat modes (bits 7..5 of a). In auto mode the
-# remote forces the fan code to 0b000 — the AC decides fan speed itself.
+# Modes that force the fan-bits field to 0b000 regardless of any user-
+# supplied `fan` value. In these modes the remote signals "AC chooses
+# fan speed" by zeroing out the fan field.
+MIDEA_FAN_LOCKED_MODES = {"auto", "dry"}
+
+# Modes that ignore temperature: the temp Gray-code field is set to a
+# sentinel (0xE) that doesn't map to any value in the 17..30°C table.
+MIDEA_TEMP_IGNORED_MODES = {"fan"}
+MIDEA_TEMP_SENTINEL = 0xE
+
+# Fan encoding for cool/heat/fan modes (bits 7..5 of byte a). For modes
+# in MIDEA_FAN_LOCKED_MODES, the wire field is forced to 0b000 — the
+# user's fan choice is ignored.
 MIDEA_FAN_BITS = {
     "auto": 0b101,
     "low":  0b100,
@@ -747,17 +763,25 @@ def _midea_fields_to_bytes(mode=None, temp=None, fan=None, power=None):
         )
     mode_bits = MIDEA_MODE_BITS[mode_key]
 
-    if temp is None:
-        temp = 22
-    temp_int = int(temp)
-    if temp_int not in MIDEA_TEMP_GRAY:
-        raise ValueError(
-            f"Midea: temp {temp_int} out of supported range 17-30"
-        )
-    temp_gray = MIDEA_TEMP_GRAY[temp_int]
+    if mode_key in MIDEA_TEMP_IGNORED_MODES:
+        # "fan" mode doesn't carry a real temperature — the remote sends
+        # a sentinel value (0xE, outside the 17..30°C Gray code range).
+        if temp is not None:
+            # Caller supplied temp; ignore it but don't error out.
+            pass
+        temp_gray = MIDEA_TEMP_SENTINEL
+    else:
+        if temp is None:
+            temp = 22
+        temp_int = int(temp)
+        if temp_int not in MIDEA_TEMP_GRAY:
+            raise ValueError(
+                f"Midea: temp {temp_int} out of supported range 17-30"
+            )
+        temp_gray = MIDEA_TEMP_GRAY[temp_int]
 
-    if mode_key == "auto":
-        # Auto mode locks fan to "AC decides"; the wire bits are 0b000.
+    if mode_key in MIDEA_FAN_LOCKED_MODES:
+        # auto / dry: AC decides fan speed; the wire field is forced to 0b000.
         fan_bits = 0b000
     else:
         if fan is None:
@@ -796,20 +820,33 @@ def midea_bytes_to_fields(a, b):
     unknown = []
 
     mode_bits = (b >> 2) & 0b11
-    if mode_bits in MIDEA_MODE_REVERSE:
-        fields["mode"] = MIDEA_MODE_REVERSE[mode_bits]
+    fan_bits = (a >> 5) & 0b111
+    temp_gray = (b >> 4) & 0xF
+
+    # Mode disambiguation: bits 3..2 of b carry 4 distinct main modes,
+    # but 0b01 is shared between dry and fan — fan_bits in `a` resolves
+    # the ambiguity (dry forces fan to 000, fan-mode allows any value).
+    if mode_bits == 0b00:
+        fields["mode"] = "cool"
+    elif mode_bits == 0b10:
+        fields["mode"] = "auto"
+    elif mode_bits == 0b11:
+        fields["mode"] = "heat"
+    elif mode_bits == 0b01:
+        fields["mode"] = "dry" if fan_bits == 0b000 else "fan"
     else:
         unknown.append(f"mode_bits=0b{mode_bits:02b}")
 
-    temp_gray = (b >> 4) & 0xF
-    if temp_gray in MIDEA_TEMP_REVERSE:
+    if fields.get("mode") in MIDEA_TEMP_IGNORED_MODES:
+        # "fan" mode reports temp_gray=0xE (sentinel); skip temp.
+        pass
+    elif temp_gray in MIDEA_TEMP_REVERSE:
         fields["temp"] = MIDEA_TEMP_REVERSE[temp_gray]
     else:
         unknown.append(f"temp_gray=0x{temp_gray:X}")
 
-    fan_bits = (a >> 5) & 0b111
-    if fields.get("mode") == "auto":
-        fields["fan"] = "auto"
+    if fields.get("mode") in MIDEA_FAN_LOCKED_MODES:
+        fields["fan"] = "auto"  # AC-controlled
     elif fan_bits in MIDEA_FAN_REVERSE:
         fields["fan"] = MIDEA_FAN_REVERSE[fan_bits]
     else:
