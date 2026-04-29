@@ -231,9 +231,9 @@ The `toggle` parameter can be 0 or 1 and is optional. It helps to distinguish be
 
 - **ac**: Some air conditioners use this protocol (at least Gorenie and MDV). Usually 16-bit command contains 4-bit mode, 4-bit fan speed, 4-bit temperature and some other bits. Requires `addr` and `cmd`. `double` (repeat signal two times) and `closing` (add closing signal) parameters are optional.
 
-- **midea**: Midea-family AC protocol (48-bit). Used by Midea-OEM rebranders such as Pioneer System, Comfee, Kaysun, Trotec, Lennox, EAS Electric, MDV, and many no-name Chinese splits. The frame contains a fixed `0xB2` vendor marker, two payload bytes `a` (mode/fan/power) and `b` (temperature/mode), plus inverse copies of all three. The `auto-decode` step picks `midea` over `ac` whenever the vendor byte equals `0xB2`.
+- **midea**: Midea-family AC protocol (48-bit). Used by Midea-OEM rebranders such as Pioneer System, Comfee, Kaysun, Trotec, Lennox, EAS Electric, MDV, and many no-name Chinese splits. State frames use vendor marker `0xB2` and contain two payload bytes `a` (mode/fan/power) and `b` (temperature/mode), plus inverse copies of all three; some toggle/special button commands use vendor marker `0xB5` instead. The `auto-decode` step picks `midea` over `ac` whenever the vendor byte equals `0xB2` or `0xB5`.
 
-  **Two parameter forms** are supported (mutually exclusive):
+  **Three parameter forms** are supported (mutually exclusive):
 
   - **Byte-level** (`a`, `b`, optional `pa`/`pb` preamble):
     - `midea:a=0x7B,b=0xE0` — fixed "Power off" magic value.
