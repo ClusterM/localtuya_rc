@@ -581,8 +581,29 @@ MIDEA_PULSE = 560
 MIDEA_GAP_0 = 560
 MIDEA_GAP_1 = 1690
 MIDEA_INTER_GAP = 5100
-MIDEA_VENDOR_MSB = 0xB2  # B0 in MSB-first reading
+MIDEA_VENDOR_MSB = 0xB2          # State commands (cool/heat/auto/dry/fan)
+MIDEA_SPECIAL_VENDOR_MSB = 0xB5  # Special toggle commands (turbo, LED, ...)
 MIDEA_HALF_LEN = 99      # 1 leading_pulse + 1 leading_gap + 48*2 bit ticks + 1 closing_pulse
+
+# Magic byte values for the user-facing toggle buttons. Captured from
+# an EAS Electric EADVA25NT2 remote; same values are reported to work on
+# other Midea-OEM AC remotes that share the 48-bit-no-bit-inversion
+# variant. Each entry is `(vendor, a, b)` in MSB convention.
+#
+# - swing: travels on the regular state-command vendor (0xB2). The AC
+#          interprets these specific bytes as "toggle vertical swing"
+#          regardless of current state.
+# - turbo: special-vendor (0xB5) command. Pressing once enables turbo
+#          for ~10 minutes; pressing again returns to previous state.
+# - led:   special-vendor (0xB5) command. Toggles the indoor unit's
+#          display panel and confirmation beep.
+MIDEA_BUTTONS = {
+    "swing": (MIDEA_VENDOR_MSB,         0x6B, 0xE0),
+    "turbo": (MIDEA_SPECIAL_VENDOR_MSB, 0xF5, 0xA2),
+    "led":   (MIDEA_SPECIAL_VENDOR_MSB, 0xF5, 0xA5),
+}
+# Reverse map for decoding: (vendor, a, b) → button name.
+MIDEA_BUTTONS_REVERSE = {v: k for k, v in MIDEA_BUTTONS.items()}
 
 # Field-level encoding tables, derived empirically from EAS Electric
 # EADVA25NT2 captures and matched against the IRremoteESP8266 Midea
@@ -678,11 +699,12 @@ def midea_decode(values):
             raise ValueError("Midea: invalid inverse pair (B2/B3)")
         if data[4] != data[5] ^ 0xFF:
             raise ValueError("Midea: invalid inverse pair (B4/B5)")
-        if data[0] != MIDEA_VENDOR_MSB:
+        if data[0] not in (MIDEA_VENDOR_MSB, MIDEA_SPECIAL_VENDOR_MSB):
             raise ValueError(
-                f"Midea: vendor byte expected 0x{MIDEA_VENDOR_MSB:02X}, got 0x{data[0]:02X}"
+                f"Midea: vendor byte expected 0x{MIDEA_VENDOR_MSB:02X} or "
+                f"0x{MIDEA_SPECIAL_VENDOR_MSB:02X}, got 0x{data[0]:02X}"
             )
-        return data[2], data[4]
+        return data[0], data[2], data[4]
 
     # The signal contains one or more 48-bit packets, each occupying exactly
     # MIDEA_HALF_LEN elements (1 leading_pulse + 1 leading_gap + 48*2 bit
@@ -713,11 +735,22 @@ def midea_decode(values):
     # frames precede it, redundancy repeats follow it. If all packets are
     # identical we return them; if there's a leading preamble that differs,
     # we still take the last (which is the state the AC should land in).
-    a, b = packets[-1]
+    last = packets[-1]
+
+    # Special-vendor (0xB5) packets are toggle-style buttons (turbo, LED,
+    # etc.). They don't carry mode/temp state, so report them as `button=`.
+    if last in MIDEA_BUTTONS_REVERSE:
+        return f"button={MIDEA_BUTTONS_REVERSE[last]}"
+
+    vendor, a, b = last
+    if vendor == MIDEA_SPECIAL_VENDOR_MSB:
+        # Special-vendor packet we don't have a name for; expose raw bytes.
+        return f"button=unknown,a=0x{a:02X},b=0x{b:02X}"
+
     if len(packets) > 1 and packets[0] != packets[-1]:
-        # There's a preamble. Expose it via a `preamble=` annotation so the
+        # There's a preamble. Expose it via a `pa`/`pb` annotation so the
         # encoder can faithfully reproduce the original two-frame sequence.
-        pa, pb = packets[0]
+        _, pa, pb = packets[0]
         return f"a=0x{a:02X},b=0x{b:02X},pa=0x{pa:02X},pb=0x{pb:02X}"
     return f"a=0x{a:02X},b=0x{b:02X}"
 
@@ -857,10 +890,15 @@ def midea_bytes_to_fields(a, b):
     return fields
 
 
-def _midea_pack(a, b):
-    """Pack a 48-bit Midea packet for payload bytes (a, b) in MSB convention."""
+def _midea_pack(a, b, vendor=MIDEA_VENDOR_MSB):
+    """Pack a 48-bit Midea packet for payload bytes (a, b) in MSB convention.
+
+    `vendor` selects the leading vendor/Type byte: MIDEA_VENDOR_MSB (0xB2)
+    for state commands (the default), MIDEA_SPECIAL_VENDOR_MSB (0xB5) for
+    special toggle commands like Turbo / LED.
+    """
     bytes_msb = [
-        MIDEA_VENDOR_MSB, MIDEA_VENDOR_MSB ^ 0xFF,
+        vendor, vendor ^ 0xFF,
         a & 0xFF, (a ^ 0xFF) & 0xFF,
         b & 0xFF, (b ^ 0xFF) & 0xFF,
     ]
@@ -872,26 +910,50 @@ def _midea_pack(a, b):
     )
 
 def midea_encode(a=None, b=None, pa=None, pb=None,
-                 mode=None, temp=None, fan=None, power=None, sleep=None):
+                 mode=None, temp=None, fan=None, power=None, sleep=None,
+                 button=None):
     """Encode a Midea AC command.
 
-    Two parameter forms (mutually exclusive):
-        Byte-level:  pass `a` and `b` (raw payload bytes).
-        Field-level: pass `mode` ("cool"/"heat"/"auto"), `temp` (17-30),
-                     `fan` ("auto"/"low"/"med"/"high"), and `power`
-                     ("on"/"off"). Sensible defaults apply.
+    Three mutually-exclusive parameter forms:
+        Byte-level:   pass `a` and `b` (raw payload bytes).
+        Field-level:  pass `mode` ("cool"/"heat"/"auto"/"dry"/"fan"),
+                      `temp` (17-30), `fan` ("auto"/"low"/"med"/"high"),
+                      and `power` ("on"/"off"). Sensible defaults apply.
+        Button-level: pass `button` ("swing"/"turbo"/"led") for one of
+                      the toggle/special commands. The vendor byte and
+                      payload are looked up from `MIDEA_BUTTONS`.
 
-    Optional preamble frame (sent before the state frame):
-        pa/pb: explicit preamble bytes.
+    Optional (only valid with byte- and field-level forms):
+        pa/pb: explicit preamble bytes (sent BEFORE the state frame).
         sleep: shorthand — when truthy, prepends the standard sleep
                preamble (0xE0, 0x03). Mutually exclusive with pa/pb.
     """
     field_form = any(v is not None for v in (mode, temp, fan, power))
     byte_form = a is not None or b is not None
-    if field_form and byte_form:
+    button_form = button is not None
+    forms_used = [field_form, byte_form, button_form]
+    if sum(forms_used) > 1:
         raise ValueError(
-            "Midea: pass either (a,b) or (mode,temp,fan,power), not both"
+            "Midea: choose only one of (a,b), (mode,...) or button=..."
         )
+
+    if button_form:
+        if pa is not None or pb is not None or sleep is not None:
+            raise ValueError(
+                "Midea: button commands do not support pa/pb/sleep"
+            )
+        if isinstance(button, str):
+            button_key = button.strip().lower()
+        else:
+            raise ValueError(f"Midea: button must be a string, got {button!r}")
+        if button_key not in MIDEA_BUTTONS:
+            raise ValueError(
+                f"Midea: unknown button {button!r}, expected one of "
+                f"{sorted(MIDEA_BUTTONS)}"
+            )
+        vendor, btn_a, btn_b = MIDEA_BUTTONS[button_key]
+        packet = _midea_pack(btn_a, btn_b, vendor=vendor)
+        return packet + [MIDEA_INTER_GAP] + packet
 
     if field_form:
         a, b = _midea_fields_to_bytes(
@@ -899,7 +961,7 @@ def midea_encode(a=None, b=None, pa=None, pb=None,
         )
     elif a is None or b is None:
         raise ValueError(
-            "Midea: must provide either (a,b) or field-level parameters"
+            "Midea: must provide either (a,b), field-level params, or button=..."
         )
 
     if not (0x00 <= a <= 0xFF):

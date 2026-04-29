@@ -290,7 +290,7 @@ def test_midea_encode_field_form_matches_byte_form():
 
 
 def test_midea_encode_rejects_mixed_forms():
-    with pytest.raises(ValueError, match="not both"):
+    with pytest.raises(ValueError, match="only one of"):
         rc_encoder.midea_encode(a=0x12, b=0x34, mode="cool")
 
 
@@ -336,3 +336,100 @@ def test_rc_auto_encode_sleep_string():
     encoded = rc_encoder.rc_auto_encode("midea:mode=cool,temp=22,fan=auto,sleep=on")
     decoded = rc_encoder.midea_decode(encoded)
     assert decoded == "a=0xBF,b=0x70,pa=0xE0,pb=0x03"
+
+
+# === Special toggle buttons (swing / turbo / LED) ===
+#
+# Reference values captured from EAS Electric EADVA25NT2 remote:
+#   swing toggle: vendor 0xB2 (regular state vendor), bytes a=0x6B, b=0xE0
+#   turbo:        vendor 0xB5 (special),              bytes a=0xF5, b=0xA2
+#   led:          vendor 0xB5 (special),              bytes a=0xF5, b=0xA5
+
+
+@pytest.mark.parametrize("button,vendor,a,b", [
+    ("swing", 0xB2, 0x6B, 0xE0),
+    ("turbo", 0xB5, 0xF5, 0xA2),
+    ("led",   0xB5, 0xF5, 0xA5),
+])
+def test_button_encode_round_trip(button, vendor, a, b):
+    """Each named button encodes to a 199-element signal whose payload
+    matches the captured reference values."""
+    encoded = rc_encoder.midea_encode(button=button)
+    assert len(encoded) == 199  # single 48-bit packet repeated twice
+    decoded = rc_encoder.midea_decode(encoded)
+    assert decoded == f"button={button}"
+
+
+def test_button_encode_rejects_unknown():
+    with pytest.raises(ValueError, match="unknown button"):
+        rc_encoder.midea_encode(button="boost")
+
+
+def test_button_encode_rejects_combination_with_state_params():
+    with pytest.raises(ValueError, match="only one of"):
+        rc_encoder.midea_encode(button="turbo", mode="cool")
+    with pytest.raises(ValueError, match="only one of"):
+        rc_encoder.midea_encode(button="turbo", a=0x12, b=0x34)
+
+
+def test_button_encode_rejects_pa_pb_sleep():
+    with pytest.raises(ValueError, match="do not support pa/pb/sleep"):
+        rc_encoder.midea_encode(button="turbo", sleep="on")
+    with pytest.raises(ValueError, match="do not support pa/pb/sleep"):
+        rc_encoder.midea_encode(button="led", pa=0x12, pb=0x34)
+
+
+def test_decode_special_vendor_known_button():
+    """A 0xB5-vendor packet whose bytes match a known button decodes as
+    `button=name`."""
+    raw = rc_encoder._midea_pack(0xF5, 0xA2, vendor=0xB5)
+    raw = raw + [rc_encoder.MIDEA_INTER_GAP] + raw
+    assert rc_encoder.midea_decode(raw) == "button=turbo"
+
+
+def test_decode_special_vendor_unknown_button():
+    """A 0xB5-vendor packet whose bytes don't match any known button
+    falls back to `button=unknown,a=...,b=...`."""
+    raw = rc_encoder._midea_pack(0x11, 0x22, vendor=0xB5)
+    raw = raw + [rc_encoder.MIDEA_INTER_GAP] + raw
+    assert rc_encoder.midea_decode(raw) == "button=unknown,a=0x11,b=0x22"
+
+
+def test_rc_auto_encode_button_string():
+    """rc_auto_encode threads `button=turbo` to midea_encode and the
+    signal round-trips."""
+    encoded = rc_encoder.rc_auto_encode("midea:button=turbo")
+    decoded = rc_encoder.rc_auto_decode(encoded)
+    assert decoded == "midea:button=turbo"
+
+
+def test_rc_auto_encode_button_swing_uses_state_vendor():
+    """Swing toggle uses the regular state-command vendor (0xB2), so its
+    encoded bytes must match the byte-level form `a=0x6B,b=0xE0`."""
+    by_button = rc_encoder.rc_auto_encode("midea:button=swing")
+    by_bytes = rc_encoder.rc_auto_encode("midea:a=0x6B,b=0xE0")
+    assert by_button == by_bytes
+
+
+def test_real_turbo_capture_decodes_as_button():
+    """The real raw signal captured for the Turbo button on the EAS
+    Electric remote must now decode as `button=turbo` (previously it
+    decoded as `ac:addr=0xAD,cmd=0x45AF` which round-tripped to a
+    different — non-functional — packet)."""
+    raw = (
+        "4453,4330,569,1581,568,506,600,1550,567,1581,568,507,599,1551,566,508,"
+        "598,1552,565,509,597,1552,597,478,596,478,596,1553,564,510,596,1553,"
+        "596,478,596,1553,596,1553,596,1554,595,1554,595,480,594,1554,595,480,"
+        "594,1555,594,481,593,481,593,481,593,481,593,1556,593,482,592,1557,"
+        "592,482,592,1557,602,472,602,1547,602,473,601,473,601,473,601,1548,"
+        "601,473,601,473,601,1548,601,474,600,1549,600,1550,599,1550,599,476,"
+        "598,1551,598,5143,4454,4327,593,1557,592,483,591,1558,601,1547,602,"
+        "473,601,1548,601,473,601,1549,600,474,600,1549,600,475,599,475,599,"
+        "1550,599,476,598,1551,598,477,597,1552,597,1552,597,1553,596,1553,"
+        "596,479,595,1553,596,479,595,1554,595,479,595,480,594,480,594,480,"
+        "594,1555,594,480,594,1555,594,481,593,1556,593,481,593,1557,592,482,"
+        "592,482,592,482,592,1557,602,472,602,473,601,1548,601,473,601,1548,"
+        "601,1548,601,1549,600,475,599,1550,599"
+    )
+    values = [int(v) for v in raw.split(",")]
+    assert rc_encoder.midea_decode(values) == "button=turbo"

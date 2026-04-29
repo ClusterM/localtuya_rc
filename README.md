@@ -245,7 +245,12 @@ The `toggle` parameter can be 0 or 1 and is optional. It helps to distinguish be
     - `midea:power=off` — power off shortcut (returns the magic bytes).
     - `midea:mode=cool,temp=22,sleep=on` — same as above but with the standard sleep preamble (`pa=0xE0,pb=0x03`).
 
-  Field semantics were derived empirically from EAS Electric EADVA25NT2 captures and matched against the IRremoteESP8266 4-bit Gray-coded temperature table. They should work for any Midea-OEM 48-bit-variant remote, but if your AC ignores the field-level command, capture the raw bytes via `remote.learn_command` and use the byte-level form.
+  - **Button-level** (toggle/special commands that don't carry mode/temp state):
+    - `midea:button=swing` — toggle vertical swing.
+    - `midea:button=turbo` — turbo cooling/heating for ~10 minutes, then returns to previous state.
+    - `midea:button=led` — toggle the indoor unit's display panel and beep.
+
+  Field semantics were derived empirically from EAS Electric EADVA25NT2 captures and matched against the IRremoteESP8266 4-bit Gray-coded temperature table. They should work for any Midea-OEM 48-bit-variant remote, but if your AC ignores the field-level command, capture the raw bytes via `remote.learn_command` and use the byte-level form. Button commands use a second vendor byte (`0xB5` instead of `0xB2`) for turbo and led; auto-decode reports them as `midea:button=...`.
 
 
 ## Credits
