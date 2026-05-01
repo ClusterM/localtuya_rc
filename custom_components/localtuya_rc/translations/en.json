@@ -8,6 +8,11 @@
         },
         "error": {
             "cannot_connect": "Cannot connect to the device. Verify that address, device id, local key and protocol version are correct.",
+            "cannot_connect_offline": "Cannot reach the device. Make sure it is online, has joined Wi-Fi, and is on the same subnet as Home Assistant. Some Tuya devices block port 6668 once they are bound to the cloud — try a power-cycle.",
+            "cannot_connect_timeout": "Connection to the device timed out. Verify the IP address is correct and that no firewall is blocking TCP port 6668.",
+            "bad_key_or_version": "Local key or protocol version is incorrect. Re-check the local key on the Tuya IoT platform; protocol version is usually 3.3, 3.4 or 3.5.",
+            "protocol_mismatch": "Device returned an unexpected payload. The selected protocol version does not match the device — try another one (3.3, 3.4 or 3.5) or leave it on Auto.",
+            "bad_response_format": "Device sent a response that could not be parsed (invalid JSON). This is most often seen on protocol 3.5 with older tinytuya versions — make sure tinytuya is up to date (1.18.0 or newer).",
             "no_control_type": "Can't auto-detect the control type. Try setting it manually below: '1' for older devices using DPS 201/202, '2' for newer devices using DPS 1-13. If neither works, the device may not be supported.",
             "tuya_not_found": "No Tuya devices found. Make sure that it's online and connected to the same network and try again.",
             "cloud_error": "Error while connecting to the Tuya cloud. Please check your configuration.",

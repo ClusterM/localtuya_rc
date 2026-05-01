@@ -208,6 +208,37 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _LOGGER.debug("Connection test status: %s, control type detected: %s", status, device.control_type)
         return device, status
 
+    @staticmethod
+    def _classify_test_failure(status, exception):
+        """Map a tinytuya error status / exception to a config-flow error key.
+
+        Returns the key used in translations/*.json (e.g. "bad_key_or_version").
+        Returns None when the response is actually a success.
+        """
+        # tinytuya error codes: see tinytuya/core/error_helper.py
+        err_code_map = {
+            "900": "bad_response_format",     # ERR_JSON
+            "901": "cannot_connect_offline",  # ERR_CONNECT
+            "902": "cannot_connect_timeout",  # ERR_TIMEOUT
+            "904": "protocol_mismatch",       # ERR_PAYLOAD
+            "905": "cannot_connect_offline",  # ERR_OFFLINE
+            "908": "protocol_mismatch",       # ERR_DEVTYPE
+            "914": "bad_key_or_version",      # ERR_KEY_OR_VER
+        }
+        if isinstance(status, dict) and "Error" in status:
+            err = str(status.get("Err", "")).strip()
+            return err_code_map.get(err, "cannot_connect")
+        if exception is not None:
+            # Common transport-level exceptions
+            name = type(exception).__name__
+            if name in ("TimeoutError", "socket.timeout"):
+                return "cannot_connect_timeout"
+            if name in ("ConnectionRefusedError", "ConnectionResetError",
+                        "ConnectionAbortedError", "OSError"):
+                return "cannot_connect_offline"
+            return "cannot_connect"
+        return None
+
     async def async_step_config(self, user_input=None, errors={}):
         """Last config step"""
         if user_input is not None:
@@ -227,8 +258,14 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try_versions = TUYA_VERSIONS if user_input[CONF_PROTOCOL_VERSION] == "Auto" else [user_input[CONF_PROTOCOL_VERSION]]
             version_ok = None
             device = None
+            # Track the most informative failure across all attempts so that
+            # the UI can display a specific message instead of a generic one.
+            last_failure = "cannot_connect"
+            last_status = None
+            last_exception = None
             for version in try_versions:
                 _LOGGER.debug("Trying protocol version %s", version)
+                status = None
                 try:
                     device, status = await self.hass.async_add_executor_job(
                         self._test_connection,
@@ -240,13 +277,24 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                 except Exception as e:
                     _LOGGER.error("Device test error, exception %s: %s", type(e), e, exc_info=True)
+                    last_exception = e
+                    last_status = None
+                    last_failure = self._classify_test_failure(None, e) or last_failure
                     continue
-                if "Error" not in status:
+                last_status = status
+                last_exception = None
+                classified = self._classify_test_failure(status, None)
+                if classified is None:
                     version_ok = version
                     break
+                last_failure = classified
             if not version_ok:
-                errors["base"] = "cannot_connect"
-                _LOGGER.error(f"Cannot connect to device using any protocol version")
+                errors["base"] = last_failure
+                _LOGGER.error(
+                    "Cannot connect to device using any protocol version "
+                    "(last_failure=%s, last_status=%s, last_exception=%s)",
+                    last_failure, last_status, last_exception,
+                )
             elif not device.control_type:
                 errors["base"] = "no_control_type"
                 _LOGGER.error(f"Device test error: control type not detected")
@@ -334,14 +382,15 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.error("Connection test error at %s: %s", new_ip, e, exc_info=True)
             return self.async_show_form(
                 step_id="reconfigure_scan",
-                errors={"base": "cannot_connect"},
+                errors={"base": self._classify_test_failure(None, e) or "cannot_connect"},
                 data_schema=vol.Schema({})
             )
 
-        if "Error" in status:
+        classified = self._classify_test_failure(status, None)
+        if classified is not None:
             return self.async_show_form(
                 step_id="reconfigure_scan",
-                errors={"base": "cannot_connect"},
+                errors={"base": classified},
                 data_schema=vol.Schema({})
             )
 
@@ -372,10 +421,12 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._test_connection, dev_id, new_ip, local_key, float(protocol_version))
             except Exception as e:
                 _LOGGER.error("Connection test error at %s: %s", new_ip, e, exc_info=True)
-                errors["base"] = "cannot_connect"
+                errors["base"] = self._classify_test_failure(None, e) or "cannot_connect"
 
-            if status is not None and "Error" in status:
-                errors["base"] = "cannot_connect"
+            if "base" not in errors:
+                classified = self._classify_test_failure(status, None)
+                if classified is not None:
+                    errors["base"] = classified
 
             if not errors:
                 config[CONF_HOST] = new_ip

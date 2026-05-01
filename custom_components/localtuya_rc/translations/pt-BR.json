@@ -7,6 +7,11 @@
         },
         "error": {
             "cannot_connect": "Não é possível conectar ao dispositivo. Verifique se o endereço, o ID do dispositivo, a chave local e a versão do protocolo estão corretos.",
+            "cannot_connect_offline": "Não foi possível alcançar o dispositivo. Verifique se ele está ligado, conectado ao Wi-Fi e na mesma sub-rede do Home Assistant. Alguns dispositivos Tuya bloqueiam a porta 6668 depois de pareados com a nuvem — tente reiniciá-lo.",
+            "cannot_connect_timeout": "A conexão com o dispositivo expirou. Verifique se o endereço IP está correto e se a porta TCP 6668 não está bloqueada pelo firewall.",
+            "bad_key_or_version": "Chave local ou versão do protocolo incorreta. Confirme a chave local na plataforma Tuya IoT; a versão do protocolo geralmente é 3.3, 3.4 ou 3.5.",
+            "protocol_mismatch": "O dispositivo retornou um payload inesperado. A versão de protocolo selecionada não corresponde ao dispositivo — tente outra (3.3, 3.4 ou 3.5) ou deixe em Auto.",
+            "bad_response_format": "O dispositivo enviou uma resposta que não pôde ser interpretada (JSON inválido). Isso é mais comum no protocolo 3.5 com versões antigas do tinytuya — certifique-se de que o tinytuya está atualizado (1.18.0 ou superior).",
             "no_control_type": "Não foi possível detectar automaticamente o tipo de controle. Tente defini-lo manualmente abaixo: '1' para dispositivos antigos usando DPS 201/202, '2' para dispositivos novos usando DPS 1-13. Se nenhum funcionar, talvez o dispositivo não seja compatível.",
             "tuya_not_found": "Nenhum dispositivo Tuya encontrado. Certifique-se de que está online e conectado à mesma rede e tente novamente.",
             "cloud_error": "Erro ao conectar à nuvem Tuya. Por favor, verifique sua configuração.",
