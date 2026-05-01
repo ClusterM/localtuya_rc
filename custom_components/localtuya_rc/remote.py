@@ -1,6 +1,7 @@
 """Support for Tuya IR Remote Control."""
 import logging
 import asyncio
+import struct
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from tinytuya import Contrib
@@ -260,6 +261,16 @@ class TuyaRC(RemoteEntity):
             self._init()
             try:
                 return self._device.receive_button(timeout)
+            except struct.error as e:
+                # tinytuya's receive_button() decodes the response with
+                # base64_to_pulses() / print_pulses() right after capture.
+                # If the device returned a too-short or odd-length payload
+                # (e.g. corrupted/partial IR capture, weak signal, dying
+                # batteries in the remote) those helpers raise struct.error
+                # instead of returning a usable code. Surface a friendlier
+                # message to the user so they know to retry.
+                _LOGGER.warning("Received corrupted IR code (struct.error: %s). Likely cause: weak signal, partial capture, or unsupported remote.", e, exc_info=True)
+                raise HomeAssistantError("Received a corrupted or too-short IR code. Try again, holding the remote closer to the device, pressing the button firmly, and replacing the remote's batteries if it is weak.")
             except Exception as e:
                 _LOGGER.error("Failed to receive button, exception %s: %s", type(e), e, exc_info=True)
                 raise HomeAssistantError("tinytuya library internal error, please check the logs.")
@@ -294,6 +305,11 @@ class TuyaRC(RemoteEntity):
                 self._init_rf()
                 try:
                     return self._device_RF.rf_receive_button(timeout=timeout)
+                except struct.error as e:
+                    # See _receive_button() for the rationale; the same
+                    # base64_to_pulses() / print_pulses() chain runs for RF.
+                    _LOGGER.warning("Received corrupted RF code (struct.error: %s). Likely cause: weak signal, partial capture, or unsupported remote.", e, exc_info=True)
+                    raise HomeAssistantError("Received a corrupted or too-short RF code. Try again, holding the remote closer to the device, pressing the button firmly, and replacing the remote's batteries if it is weak.")
                 except Exception as e:
                     _LOGGER.error("Failed to receive RF button, exception %s: %s", type(e), e, exc_info=True)
                     raise HomeAssistantError("tinytuya library internal rf error, please check the logs.")
@@ -442,8 +458,14 @@ class TuyaRC(RemoteEntity):
                 self._deinit()
                 raise HomeAssistantError(button["Error"])
             if not isinstance(button, str):
+                # tinytuya's receive_button() returns the last raw response it
+                # saw (typically a dict) when no proper button code was reported
+                # before the timeout - e.g. the device only echoed the study
+                # command back. Tell the user to retry rather than show the raw
+                # dump that mostly looks like an internal error.
+                _LOGGER.warning("Did not receive a button code before timeout, last response: %r", button)
                 self._deinit()
-                raise ValueError(f"Invalid response: {button}")
+                raise ValueError("The device did not report a button code in time. Please try again: hold the remote closer, press the button firmly for ~1 second, or increase the learn timeout.")
             
             if command_type == "ir":
                 pulses = Contrib.IRRemoteControlDevice.base64_to_pulses(button)
