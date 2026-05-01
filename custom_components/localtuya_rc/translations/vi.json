@@ -1,0 +1,114 @@
+{
+    "title": "Điều khiển từ xa LocalTuyaIR",
+    "config": {
+        "abort": {
+            "already_configured": "Lỗi: tích hợp cho thiết bị này đã được cấu hình.",
+            "unknown": "Lỗi không xác định, vui lòng kiểm tra nhật ký.",
+            "reconfigure_successful": "Đã cấu hình lại thiết bị thành công."
+        },
+        "error": {
+            "cannot_connect": "Không thể kết nối với thiết bị. Vui lòng kiểm tra địa chỉ, ID thiết bị, local key và phiên bản giao thức.",
+            "cannot_connect_offline": "Không thể truy cập thiết bị. Hãy đảm bảo thiết bị đang bật, đã kết nối Wi-Fi và cùng mạng con với Home Assistant. Một số thiết bị Tuya chặn cổng 6668 sau khi liên kết với cloud — hãy thử khởi động lại thiết bị.",
+            "cannot_connect_timeout": "Hết thời gian chờ khi kết nối tới thiết bị. Hãy kiểm tra IP đúng và tường lửa không chặn cổng TCP 6668.",
+            "bad_key_or_version": "Local key hoặc phiên bản giao thức không đúng. Hãy xác minh local key trên Tuya IoT Platform; phiên bản giao thức thường là 3.3, 3.4 hoặc 3.5.",
+            "protocol_mismatch": "Thiết bị trả về dữ liệu không mong đợi. Phiên bản giao thức đã chọn không khớp với thiết bị — hãy thử phiên bản khác (3.3, 3.4 hoặc 3.5) hoặc để Auto.",
+            "bad_response_format": "Thiết bị gửi phản hồi không thể phân tích (JSON không hợp lệ). Trường hợp này hay gặp với giao thức 3.5 trên các bản tinytuya cũ — hãy đảm bảo tinytuya đã cập nhật (1.18.0 trở lên).",
+            "no_control_type": "Không thể tự động nhận diện loại điều khiển. Hãy đặt thủ công bên dưới: '1' cho thiết bị cũ dùng DPS 201/202, '2' cho thiết bị mới dùng DPS 1-13. Nếu cả hai đều không hoạt động, có thể thiết bị không được hỗ trợ.",
+            "tuya_not_found": "Không tìm thấy thiết bị Tuya. Hãy đảm bảo thiết bị trực tuyến và cùng mạng, sau đó thử lại.",
+            "cloud_error": "Lỗi khi kết nối tới Tuya cloud. Vui lòng kiểm tra cấu hình.",
+            "cloud_unauthorized": "Không có quyền truy cập Tuya cloud. Vui lòng kiểm tra API key và API secret.",
+            "cloud_no_devices": "Không tìm thấy thiết bị Tuya trong cloud. Vui lòng kiểm tra cấu hình, đảm bảo bạn đã liên kết đúng tài khoản và chọn đúng khu vực.",
+            "unknown": "Lỗi không xác định, vui lòng kiểm tra nhật ký."
+        },
+        "step": {
+            "method": {
+                "title": "Điều khiển từ xa LocalTuyaIR",
+                "description": "Tích hợp này cho phép bạn dùng thiết bị điều khiển từ xa đa năng Tuya với Home Assistant ngay tại chỗ, không cần Tuya cloud.\n\nĐể truy cập thiết bị Tuya Remote Control, chúng ta cần local key của nó. Bước này có thể hơi phức tạp, vui lòng xem tài liệu để biết chi tiết.\n\nVui lòng chọn phương thức bạn muốn dùng để cấu hình thiết bị Tuya Remote Control.",
+                "menu_options": {
+                    "cloud": "Lấy local key qua Tuya Cloud API",
+                    "ip_method": "Nhập local key thủ công"
+                }
+            },
+            "cloud": {
+                "title": "Tuya Cloud API",
+                "description": "Để lấy local key, cần kết nối tới Tuya cloud. Vui lòng nhập Client ID và Client Secret của Tuya Cloud API. Xem tài liệu để biết thêm.",
+                "data": {
+                    "region": "Khu vực",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "Cách lấy địa chỉ IP của thiết bị",
+                "description": "Để lấy địa chỉ IP của thiết bị, bạn có thể quét mạng cục bộ hoặc nhập thủ công.",
+                "menu_options": {
+                    "pre_scan": "Quét mạng cục bộ (khuyến nghị)",
+                    "ask_ip": "Nhập IP thủ công",
+                    "config": "Nhập IP thủ công"
+                }
+            },
+            "ask_ip": {
+                "title": "Nhập địa chỉ IP của thiết bị",
+                "description": "Vui lòng nhập địa chỉ IP của thiết bị Tuya Remote Control và chọn thiết bị tương ứng từ Tuya cloud.",
+                "data": {
+                    "host": "Địa chỉ IP của thiết bị",
+                    "device_id": "Tên thiết bị"
+                }
+            },
+            "pre_scan": {
+                "title": "Quét mạng",
+                "description": "Đang tìm thiết bị trên mạng. Có thể mất tới 30 giây."
+            },
+            "scan": {
+                "title": "Chọn thiết bị",
+                "description": "Vui lòng chọn địa chỉ IP của thiết bị Tuya Remote Control.",
+                "data": {
+                    "host": "Địa chỉ IP của thiết bị"
+                }
+            },
+            "config": {
+                "title": "Cấu hình thiết bị Tuya Remote Control",
+                "description": "Vui lòng nhập địa chỉ IP, ID thiết bị và local key của thiết bị Tuya Remote Control.",
+                "data": {
+                    "name": "Tên thiết bị",
+                    "host": "Host",
+                    "device_id": "ID thiết bị",
+                    "local_key": "Local key",
+                    "protocol_version": "Phiên bản giao thức (thường là 3.3 hoặc 3.4)",
+                    "control_type": "Loại điều khiển ('Auto' tự động nhận diện; '1' cho thiết bị cũ dùng DPS 201/202; '2' cho thiết bị mới dùng DPS 1-13)",
+                    "persistent_connection": "Kết nối liên tục (nhanh hơn nhưng có thể không ổn định)"
+                }
+            },
+            "reconfigure": {
+                "title": "Cập nhật kết nối thiết bị",
+                "description": "Địa chỉ IP của thiết bị có thể đã thay đổi. Hãy chọn cách cập nhật.",
+                "menu_options": {
+                    "reconfigure_scan": "Quét mạng để tìm thiết bị",
+                    "reconfigure_manual": "Nhập IP mới thủ công"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "Quét mạng",
+                "description": "Đang quét mạng để tìm thiết bị. Nếu không tìm thấy, hãy đảm bảo thiết bị trực tuyến và cùng mạng, sau đó nhấn Gửi để thử lại."
+            },
+            "reconfigure_manual": {
+                "title": "Nhập IP mới",
+                "description": "Nhập địa chỉ IP mới của thiết bị. Kết nối sẽ được kiểm tra trước khi lưu.",
+                "data": {
+                    "host": "Địa chỉ IP của thiết bị"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Cấu hình thiết bị Tuya Remote Control",
+                "data": {
+                    "persistent_connection": "Kết nối liên tục (nhanh hơn nhưng có thể không ổn định)",
+                    "control_type": "Loại điều khiển ('Auto' tự động nhận diện; '1' cho thiết bị cũ dùng DPS 201/202; '2' cho thiết bị mới dùng DPS 1-13)"
+                }
+            }
+        }
+    }
+}

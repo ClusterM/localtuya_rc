@@ -1,0 +1,114 @@
+{
+    "title": "Mando a distancia LocalTuyaIR",
+    "config": {
+        "abort": {
+            "already_configured": "Error: la integración para este dispositivo ya está configurada.",
+            "unknown": "Error desconocido, por favor revise los registros.",
+            "reconfigure_successful": "Dispositivo reconfigurado correctamente."
+        },
+        "error": {
+            "cannot_connect": "No se puede conectar con el dispositivo. Verifique que la dirección, el ID del dispositivo, la clave local y la versión del protocolo sean correctos.",
+            "cannot_connect_offline": "No se puede alcanzar el dispositivo. Asegúrese de que esté en línea, conectado al Wi-Fi y en la misma subred que Home Assistant. Algunos dispositivos Tuya bloquean el puerto 6668 una vez vinculados a la nube — pruebe a reiniciar el dispositivo.",
+            "cannot_connect_timeout": "Tiempo de espera agotado al conectar con el dispositivo. Verifique que la dirección IP sea correcta y que ningún cortafuegos esté bloqueando el puerto TCP 6668.",
+            "bad_key_or_version": "La clave local o la versión del protocolo es incorrecta. Verifique la clave local en la plataforma Tuya IoT; la versión del protocolo suele ser 3.3, 3.4 o 3.5.",
+            "protocol_mismatch": "El dispositivo devolvió una respuesta inesperada. La versión de protocolo seleccionada no coincide con el dispositivo — pruebe otra (3.3, 3.4 o 3.5) o déjela en Auto.",
+            "bad_response_format": "El dispositivo envió una respuesta que no se pudo analizar (JSON no válido). Suele ocurrir con el protocolo 3.5 y versiones antiguas de tinytuya — asegúrese de tener tinytuya actualizado (1.18.0 o superior).",
+            "no_control_type": "No se pudo detectar automáticamente el tipo de control. Pruebe a configurarlo manualmente abajo: '1' para dispositivos antiguos con DPS 201/202, '2' para dispositivos nuevos con DPS 1-13. Si ninguno funciona, puede que el dispositivo no sea compatible.",
+            "tuya_not_found": "No se encontraron dispositivos Tuya. Asegúrese de que esté en línea y conectado a la misma red e inténtelo de nuevo.",
+            "cloud_error": "Error al conectar con la nube de Tuya. Verifique su configuración.",
+            "cloud_unauthorized": "Sin autorización para acceder a la nube de Tuya. Verifique su configuración: clave API y secreto API.",
+            "cloud_no_devices": "No se encontraron dispositivos Tuya en la nube. Verifique su configuración: asegúrese de haber vinculado la cuenta correcta y seleccionado la región correcta.",
+            "unknown": "Error desconocido, por favor revise los registros."
+        },
+        "step": {
+            "method": {
+                "title": "Mando a distancia LocalTuyaIR",
+                "description": "Esta integración le permitirá usar su dispositivo de mando a distancia universal Tuya con Home Assistant de forma local, sin necesidad de la nube de Tuya.\n\nPara acceder a su dispositivo Tuya Remote Control, necesitamos su clave de cifrado local. Este paso puede ser algo complicado; consulte la documentación para más información.\n\nSeleccione el método que desea usar para configurar su dispositivo Tuya Remote Control.",
+                "menu_options": {
+                    "cloud": "Obtener la clave local mediante la API de Tuya Cloud",
+                    "ip_method": "Introducir la clave local manualmente"
+                }
+            },
+            "cloud": {
+                "title": "API de Tuya Cloud",
+                "description": "Para obtener la clave local necesitamos conectarnos a la nube de Tuya. Introduzca su Client ID y Client Secret de la API de Tuya Cloud. Consulte la documentación para más información.",
+                "data": {
+                    "region": "Región",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "Cómo obtener la dirección IP del dispositivo",
+                "description": "Para obtener la dirección IP del dispositivo, puede escanear su red local o introducirla manualmente.",
+                "menu_options": {
+                    "pre_scan": "Escanear la red local (recomendado)",
+                    "ask_ip": "Introducir la dirección IP manualmente",
+                    "config": "Introducir la dirección IP manualmente"
+                }
+            },
+            "ask_ip": {
+                "title": "Introduzca la dirección IP del dispositivo",
+                "description": "Introduzca la dirección IP de su dispositivo Tuya Remote Control y seleccione el dispositivo correspondiente desde la nube de Tuya.",
+                "data": {
+                    "host": "Dirección IP del dispositivo",
+                    "device_id": "Nombre del dispositivo"
+                }
+            },
+            "pre_scan": {
+                "title": "Escaneo de red",
+                "description": "Ahora vamos a buscar su dispositivo en la red. Puede tardar hasta 30 segundos."
+            },
+            "scan": {
+                "title": "Seleccione el dispositivo",
+                "description": "Seleccione la dirección IP de su dispositivo Tuya Remote Control.",
+                "data": {
+                    "host": "Dirección IP del dispositivo"
+                }
+            },
+            "config": {
+                "title": "Configurar su dispositivo Tuya Remote Control",
+                "description": "Introduzca la dirección IP, el ID del dispositivo y la clave local de su dispositivo Tuya Remote Control.",
+                "data": {
+                    "name": "Nombre del dispositivo",
+                    "host": "Host",
+                    "device_id": "ID del dispositivo",
+                    "local_key": "Clave local",
+                    "protocol_version": "Versión del protocolo (normalmente 3.3 o 3.4)",
+                    "control_type": "Tipo de control ('Auto' intenta detectarlo; '1' para dispositivos antiguos con DPS 201/202; '2' para dispositivos nuevos con DPS 1-13)",
+                    "persistent_connection": "Conexión persistente (más rápida pero puede ser inestable)"
+                }
+            },
+            "reconfigure": {
+                "title": "Actualizar la conexión del dispositivo",
+                "description": "La dirección IP del dispositivo puede haber cambiado. Elija cómo actualizarla.",
+                "menu_options": {
+                    "reconfigure_scan": "Buscar el dispositivo en la red",
+                    "reconfigure_manual": "Introducir una nueva dirección IP manualmente"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "Escaneo de red",
+                "description": "Buscando el dispositivo en la red. Si no se encuentra, verifique que esté en línea y conectado a la misma red, y luego pulse Enviar para reintentar."
+            },
+            "reconfigure_manual": {
+                "title": "Introducir nueva dirección IP",
+                "description": "Introduzca la nueva dirección IP del dispositivo. La conexión se probará antes de guardar.",
+                "data": {
+                    "host": "Dirección IP del dispositivo"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Configurar su dispositivo Tuya Remote Control",
+                "data": {
+                    "persistent_connection": "Conexión persistente (más rápida pero puede ser inestable)",
+                    "control_type": "Tipo de control ('Auto' intenta detectarlo; '1' para dispositivos antiguos con DPS 201/202; '2' para dispositivos nuevos con DPS 1-13)"
+                }
+            }
+        }
+    }
+}

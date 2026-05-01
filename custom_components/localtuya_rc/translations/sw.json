@@ -1,0 +1,114 @@
+{
+    "title": "Kidhibiti cha Mbali cha LocalTuyaIR",
+    "config": {
+        "abort": {
+            "already_configured": "Hitilafu: muunganisho wa kifaa hiki tayari umewekwa.",
+            "unknown": "Hitilafu isiyojulikana, tafadhali angalia kumbukumbu (logs).",
+            "reconfigure_successful": "Kifaa kimesanidiwa upya kwa mafanikio."
+        },
+        "error": {
+            "cannot_connect": "Imeshindwa kuunganisha kwenye kifaa. Hakikisha anwani, kitambulisho cha kifaa, local key na toleo la itifaki ni sahihi.",
+            "cannot_connect_offline": "Haiwezi kufikia kifaa. Hakikisha kifaa kiko mtandaoni, kimeunganishwa kwenye Wi-Fi, na kiko kwenye subnet sawa na Home Assistant. Baadhi ya vifaa vya Tuya huzuia mlango 6668 baada ya kuunganishwa na cloud — jaribu kukiwasha tena.",
+            "cannot_connect_timeout": "Muda wa kuunganisha kwenye kifaa umeisha. Hakikisha anwani ya IP ni sahihi na hakuna firewall inayozuia mlango wa TCP 6668.",
+            "bad_key_or_version": "Local key au toleo la itifaki si sahihi. Thibitisha local key kwenye jukwaa la Tuya IoT; toleo la itifaki kwa kawaida ni 3.3, 3.4 au 3.5.",
+            "protocol_mismatch": "Kifaa kilirudisha payload isiyotarajiwa. Toleo la itifaki ulilochagua halilingani na kifaa — jaribu jingine (3.3, 3.4 au 3.5) au liache kwenye Auto.",
+            "bad_response_format": "Kifaa kilituma jibu lisiloweza kuchanganuliwa (JSON batili). Hii hutokea hasa wakati wa kutumia itifaki 3.5 na toleo la zamani la tinytuya — hakikisha tinytuya imesasishwa hadi 1.18.0 au mpya zaidi.",
+            "no_control_type": "Imeshindikana kutambua aina ya udhibiti kiotomatiki. Jaribu kuiweka mwenyewe hapa chini: '1' kwa vifaa vya zamani vinavyotumia DPS 201/202, na '2' kwa vifaa vipya vinavyotumia DPS 1-13. Ikiwa hakuna inayofanya kazi, kifaa huenda hakitumiki.",
+            "tuya_not_found": "Hakuna vifaa vya Tuya vilivyopatikana. Hakikisha kifaa kiko mtandaoni na kimeunganishwa kwenye mtandao huohuo, kisha jaribu tena.",
+            "cloud_error": "Hitilafu wakati wa kuunganisha kwenye Tuya cloud. Tafadhali angalia usanidi wako.",
+            "cloud_unauthorized": "Huna idhini ya kufikia Tuya cloud. Tafadhali angalia usanidi wako: API key na API secret.",
+            "cloud_no_devices": "Hakuna vifaa vya Tuya vilivyopatikana kwenye cloud. Tafadhali angalia usanidi wako: hakikisha umeunganisha akaunti sahihi na umechagua eneo sahihi.",
+            "unknown": "Hitilafu isiyojulikana, tafadhali angalia kumbukumbu (logs)."
+        },
+        "step": {
+            "method": {
+                "title": "Kidhibiti cha Mbali cha LocalTuyaIR",
+                "description": "Muunganisho huu utakuruhusu kutumia kifaa chako cha kidhibiti cha mbali cha Tuya na Home Assistant kwa ndani, bila kuhitaji Tuya cloud.\n\nIli kufikia kifaa cha Tuya Remote Control, tunahitaji local encryption key yake. Hatua hii inaweza kuwa ngumu kidogo, tafadhali angalia nyaraka kwa maelezo zaidi.\n\nTafadhali chagua njia unayotaka kutumia kusanidi kifaa chako cha Tuya Remote Control.",
+                "menu_options": {
+                    "cloud": "Pata local key kupitia Tuya Cloud API",
+                    "ip_method": "Ingiza local key mwenyewe"
+                }
+            },
+            "cloud": {
+                "title": "Tuya Cloud API",
+                "description": "Ili kupata local key, tunahitaji kuunganishwa na Tuya cloud. Tafadhali ingiza Client ID na Client Secret yako ya Tuya Cloud API. Tazama nyaraka kwa maelezo zaidi.",
+                "data": {
+                    "region": "Eneo",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "Jinsi ya kupata anwani ya IP ya kifaa",
+                "description": "Ili kupata anwani ya IP ya kifaa, unaweza kuchanganua mtandao wako wa nyumbani au kuiingiza mwenyewe.",
+                "menu_options": {
+                    "pre_scan": "Changanua mtandao wa nyumbani (inashauriwa)",
+                    "ask_ip": "Ingiza anwani ya IP mwenyewe",
+                    "config": "Ingiza anwani ya IP mwenyewe"
+                }
+            },
+            "ask_ip": {
+                "title": "Ingiza anwani ya IP ya kifaa",
+                "description": "Tafadhali ingiza anwani ya IP ya kifaa chako cha Tuya Remote Control na chagua kifaa husika kutoka Tuya cloud.",
+                "data": {
+                    "host": "Anwani ya IP ya kifaa",
+                    "device_id": "Jina la kifaa"
+                }
+            },
+            "pre_scan": {
+                "title": "Uchanganuzi wa mtandao",
+                "description": "Sasa tunatafuta kifaa chako kwenye mtandao. Inaweza kuchukua hadi sekunde 30."
+            },
+            "scan": {
+                "title": "Chagua kifaa",
+                "description": "Tafadhali chagua anwani ya IP ya kifaa chako cha Tuya Remote Control.",
+                "data": {
+                    "host": "Anwani ya IP ya kifaa"
+                }
+            },
+            "config": {
+                "title": "Sanidi kifaa chako cha Tuya Remote Control",
+                "description": "Tafadhali ingiza anwani ya IP, kitambulisho cha kifaa na local key ya kifaa chako cha Tuya Remote Control.",
+                "data": {
+                    "name": "Jina la kifaa",
+                    "host": "Mwenyeji",
+                    "device_id": "Kitambulisho cha kifaa",
+                    "local_key": "Local key",
+                    "protocol_version": "Toleo la itifaki (kawaida 3.3 au 3.4)",
+                    "control_type": "Aina ya udhibiti ('Auto' hujaribu kutambua; '1' kwa vifaa vya zamani vinavyotumia DPS 201/202; '2' kwa vifaa vipya vinavyotumia DPS 1-13)",
+                    "persistent_connection": "Muunganisho wa kudumu (mwepesi, lakini unaweza kuwa si thabiti)"
+                }
+            },
+            "reconfigure": {
+                "title": "Sasisha muunganisho wa kifaa",
+                "description": "Anwani ya IP ya kifaa huenda imebadilika. Chagua jinsi ya kuisasisha.",
+                "menu_options": {
+                    "reconfigure_scan": "Tafuta kifaa kwenye mtandao",
+                    "reconfigure_manual": "Ingiza anwani mpya ya IP mwenyewe"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "Uchanganuzi wa mtandao",
+                "description": "Inatafuta kifaa kwenye mtandao. Ikiwa hakikupatikana, hakikisha kiko mtandaoni na kwenye mtandao uleule, kisha bonyeza Wasilisha kujaribu tena."
+            },
+            "reconfigure_manual": {
+                "title": "Ingiza anwani mpya ya IP",
+                "description": "Ingiza anwani mpya ya IP ya kifaa. Muunganisho utajaribiwa kabla ya kuhifadhi.",
+                "data": {
+                    "host": "Anwani ya IP ya kifaa"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Sanidi kifaa chako cha Tuya Remote Control",
+                "data": {
+                    "persistent_connection": "Muunganisho wa kudumu (mwepesi, lakini unaweza kuwa si thabiti)",
+                    "control_type": "Aina ya udhibiti ('Auto' hujaribu kutambua; '1' kwa vifaa vya zamani vinavyotumia DPS 201/202; '2' kwa vifaa vipya vinavyotumia DPS 1-13)"
+                }
+            }
+        }
+    }
+}

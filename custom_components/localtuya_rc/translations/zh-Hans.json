@@ -1,0 +1,114 @@
+{
+    "title": "LocalTuyaIR 遥控",
+    "config": {
+        "abort": {
+            "already_configured": "错误：此设备的集成已经配置过了。",
+            "unknown": "未知错误，请查看日志。",
+            "reconfigure_successful": "设备重新配置成功。"
+        },
+        "error": {
+            "cannot_connect": "无法连接到设备。请检查地址、设备 ID、本地密钥和协议版本是否正确。",
+            "cannot_connect_offline": "无法连接到设备。请确认设备已开机、已连接 Wi-Fi，并与 Home Assistant 处于同一子网。某些 Tuya 设备在与云端绑定后会阻塞 6668 端口——请尝试重新上电。",
+            "cannot_connect_timeout": "连接设备超时。请确认 IP 地址正确，且没有防火墙阻塞 TCP 6668 端口。",
+            "bad_key_or_version": "本地密钥或协议版本不正确。请在 Tuya IoT 平台上核对本地密钥；协议版本通常为 3.3、3.4 或 3.5。",
+            "protocol_mismatch": "设备返回了无法识别的数据。当前选择的协议版本与设备不匹配——请尝试其他版本（3.3、3.4 或 3.5），或保留为 Auto。",
+            "bad_response_format": "设备返回的响应无法解析（JSON 无效）。在使用 3.5 协议且 tinytuya 版本较旧时最常见——请确保 tinytuya 已更新到 1.18.0 或更高版本。",
+            "no_control_type": "无法自动检测控制类型。请在下方手动设置：旧设备（使用 DPS 201/202）选择 '1'，新设备（使用 DPS 1-13）选择 '2'。如果两者都不行，可能是设备不被支持。",
+            "tuya_not_found": "未找到 Tuya 设备。请确认设备已在线并连接到同一网络，然后重试。",
+            "cloud_error": "连接 Tuya 云时出错。请检查您的配置。",
+            "cloud_unauthorized": "无权访问 Tuya 云。请检查您的配置：API key 和 API secret。",
+            "cloud_no_devices": "在云端未找到 Tuya 设备。请检查您的配置，确认绑定了正确的账号并选择了正确的区域。",
+            "unknown": "未知错误，请查看日志。"
+        },
+        "step": {
+            "method": {
+                "title": "LocalTuyaIR 遥控",
+                "description": "本集成允许您在本地使用 Home Assistant 控制 Tuya 万能遥控设备，无需依赖 Tuya 云。\n\n要访问 Tuya Remote Control 设备，我们需要它的本地加密密钥。这一步可能比较麻烦，详情请查阅文档。\n\n请选择配置 Tuya Remote Control 设备的方式。",
+                "menu_options": {
+                    "cloud": "通过 Tuya Cloud API 获取本地密钥",
+                    "ip_method": "手动输入本地密钥"
+                }
+            },
+            "cloud": {
+                "title": "Tuya Cloud API",
+                "description": "要获取本地密钥，需要连接到 Tuya 云。请输入您的 Tuya Cloud API Client ID 和 Client Secret。详情请查阅文档。",
+                "data": {
+                    "region": "区域",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "如何获取设备的 IP 地址",
+                "description": "要获取设备的 IP 地址，您可以扫描本地网络或手动输入。",
+                "menu_options": {
+                    "pre_scan": "扫描本地网络（推荐）",
+                    "ask_ip": "手动输入 IP 地址",
+                    "config": "手动输入 IP 地址"
+                }
+            },
+            "ask_ip": {
+                "title": "输入设备 IP 地址",
+                "description": "请输入您的 Tuya Remote Control 设备的 IP 地址，并从 Tuya 云中选择对应的设备。",
+                "data": {
+                    "host": "设备 IP 地址",
+                    "device_id": "设备名称"
+                }
+            },
+            "pre_scan": {
+                "title": "网络扫描",
+                "description": "现在我们将在网络中查找您的设备。可能需要最多 30 秒。"
+            },
+            "scan": {
+                "title": "选择设备",
+                "description": "请选择您的 Tuya Remote Control 设备的 IP 地址。",
+                "data": {
+                    "host": "设备 IP 地址"
+                }
+            },
+            "config": {
+                "title": "配置您的 Tuya Remote Control 设备",
+                "description": "请输入您的 Tuya Remote Control 设备的 IP 地址、设备 ID 和本地密钥。",
+                "data": {
+                    "name": "设备名称",
+                    "host": "主机",
+                    "device_id": "设备 ID",
+                    "local_key": "本地密钥",
+                    "protocol_version": "协议版本（通常为 3.3 或 3.4）",
+                    "control_type": "控制类型（'Auto' 自动检测；'1' 用于使用 DPS 201/202 的旧设备；'2' 用于使用 DPS 1-13 的新设备）",
+                    "persistent_connection": "持久连接（更快，但可能不稳定）"
+                }
+            },
+            "reconfigure": {
+                "title": "更新设备连接",
+                "description": "设备的 IP 地址可能已变更。请选择更新方式。",
+                "menu_options": {
+                    "reconfigure_scan": "在网络中查找设备",
+                    "reconfigure_manual": "手动输入新的 IP 地址"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "网络扫描",
+                "description": "正在网络中查找设备。如果未找到，请确认设备已在线并连接到同一网络，然后点击提交重试。"
+            },
+            "reconfigure_manual": {
+                "title": "输入新的 IP 地址",
+                "description": "输入设备的新 IP 地址。保存前会先测试连接。",
+                "data": {
+                    "host": "设备 IP 地址"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "配置您的 Tuya Remote Control 设备",
+                "data": {
+                    "persistent_connection": "持久连接（更快，但可能不稳定）",
+                    "control_type": "控制类型（'Auto' 自动检测；'1' 用于使用 DPS 201/202 的旧设备；'2' 用于使用 DPS 1-13 的新设备）"
+                }
+            }
+        }
+    }
+}

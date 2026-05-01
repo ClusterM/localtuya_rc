@@ -1,0 +1,114 @@
+{
+    "title": "Remote Control LocalTuyaIR",
+    "config": {
+        "abort": {
+            "already_configured": "Kesalahan: integrasi untuk perangkat ini sudah dikonfigurasi.",
+            "unknown": "Kesalahan tidak diketahui, silakan periksa log.",
+            "reconfigure_successful": "Perangkat berhasil dikonfigurasi ulang."
+        },
+        "error": {
+            "cannot_connect": "Tidak dapat tersambung ke perangkat. Pastikan alamat, ID perangkat, local key, dan versi protokol sudah benar.",
+            "cannot_connect_offline": "Tidak dapat menjangkau perangkat. Pastikan perangkat menyala, terhubung Wi-Fi, dan berada di subnet yang sama dengan Home Assistant. Beberapa perangkat Tuya memblokir port 6668 setelah terikat ke cloud — coba matikan dan nyalakan ulang.",
+            "cannot_connect_timeout": "Waktu sambungan ke perangkat habis. Pastikan alamat IP benar dan firewall tidak memblokir port TCP 6668.",
+            "bad_key_or_version": "Local key atau versi protokol salah. Periksa kembali local key di Tuya IoT Platform; versi protokol biasanya 3.3, 3.4, atau 3.5.",
+            "protocol_mismatch": "Perangkat mengembalikan payload tak terduga. Versi protokol yang dipilih tidak cocok dengan perangkat — coba versi lain (3.3, 3.4, atau 3.5) atau biarkan Auto.",
+            "bad_response_format": "Perangkat mengirim respons yang tidak dapat diuraikan (JSON tidak valid). Hal ini paling sering terjadi pada protokol 3.5 dengan tinytuya versi lama — pastikan tinytuya sudah diperbarui ke 1.18.0 atau lebih baru.",
+            "no_control_type": "Tidak dapat mendeteksi tipe kontrol secara otomatis. Coba tetapkan secara manual di bawah: '1' untuk perangkat lama yang menggunakan DPS 201/202, '2' untuk perangkat baru yang menggunakan DPS 1-13. Jika keduanya tidak berhasil, perangkat mungkin tidak didukung.",
+            "tuya_not_found": "Tidak ada perangkat Tuya yang ditemukan. Pastikan perangkat online dan terhubung ke jaringan yang sama, lalu coba lagi.",
+            "cloud_error": "Kesalahan saat menyambung ke Tuya cloud. Periksa konfigurasi Anda.",
+            "cloud_unauthorized": "Tidak diizinkan mengakses Tuya cloud. Periksa konfigurasi Anda: API key dan API secret.",
+            "cloud_no_devices": "Tidak ada perangkat Tuya di cloud. Periksa konfigurasi Anda; pastikan akun yang ditautkan benar dan wilayah yang dipilih tepat.",
+            "unknown": "Kesalahan tidak diketahui, silakan periksa log."
+        },
+        "step": {
+            "method": {
+                "title": "Remote Control LocalTuyaIR",
+                "description": "Integrasi ini memungkinkan Anda menggunakan perangkat remote universal Tuya bersama Home Assistant secara lokal, tanpa perlu Tuya cloud.\n\nUntuk mengakses perangkat Tuya Remote Control, kami memerlukan local encryption key. Langkah ini bisa sedikit rumit, silakan baca dokumentasi untuk informasi lebih lanjut.\n\nSilakan pilih metode yang ingin Anda gunakan untuk mengonfigurasi perangkat Tuya Remote Control.",
+                "menu_options": {
+                    "cloud": "Dapatkan local key melalui Tuya Cloud API",
+                    "ip_method": "Masukkan local key secara manual"
+                }
+            },
+            "cloud": {
+                "title": "Tuya Cloud API",
+                "description": "Untuk mendapatkan local key, kita perlu terhubung ke Tuya cloud. Masukkan Client ID dan Client Secret Tuya Cloud API Anda. Lihat dokumentasi untuk informasi lebih lanjut.",
+                "data": {
+                    "region": "Wilayah",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "Cara mendapatkan alamat IP perangkat",
+                "description": "Untuk mendapatkan alamat IP perangkat, Anda dapat memindai jaringan lokal atau memasukkannya secara manual.",
+                "menu_options": {
+                    "pre_scan": "Pindai jaringan lokal (disarankan)",
+                    "ask_ip": "Masukkan alamat IP secara manual",
+                    "config": "Masukkan alamat IP secara manual"
+                }
+            },
+            "ask_ip": {
+                "title": "Masukkan alamat IP perangkat",
+                "description": "Masukkan alamat IP perangkat Tuya Remote Control dan pilih perangkat yang sesuai dari Tuya cloud.",
+                "data": {
+                    "host": "Alamat IP perangkat",
+                    "device_id": "Nama perangkat"
+                }
+            },
+            "pre_scan": {
+                "title": "Pemindaian jaringan",
+                "description": "Sekarang kami mencari perangkat Anda di jaringan. Bisa memakan waktu hingga 30 detik."
+            },
+            "scan": {
+                "title": "Pilih perangkat",
+                "description": "Pilih alamat IP perangkat Tuya Remote Control Anda.",
+                "data": {
+                    "host": "Alamat IP perangkat"
+                }
+            },
+            "config": {
+                "title": "Konfigurasi perangkat Tuya Remote Control",
+                "description": "Masukkan alamat IP, ID perangkat, dan local key dari perangkat Tuya Remote Control.",
+                "data": {
+                    "name": "Nama perangkat",
+                    "host": "Host",
+                    "device_id": "ID perangkat",
+                    "local_key": "Local key",
+                    "protocol_version": "Versi protokol (biasanya 3.3 atau 3.4)",
+                    "control_type": "Tipe kontrol ('Auto' mencoba mendeteksi; '1' untuk perangkat lama dengan DPS 201/202; '2' untuk perangkat baru dengan DPS 1-13)",
+                    "persistent_connection": "Koneksi persisten (lebih cepat tetapi bisa tidak stabil)"
+                }
+            },
+            "reconfigure": {
+                "title": "Perbarui koneksi perangkat",
+                "description": "Alamat IP perangkat mungkin telah berubah. Pilih cara untuk memperbaruinya.",
+                "menu_options": {
+                    "reconfigure_scan": "Cari perangkat di jaringan",
+                    "reconfigure_manual": "Masukkan alamat IP baru secara manual"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "Pemindaian jaringan",
+                "description": "Memindai perangkat di jaringan. Jika tidak ditemukan, pastikan perangkat online dan terhubung ke jaringan yang sama, lalu tekan Kirim untuk mencoba lagi."
+            },
+            "reconfigure_manual": {
+                "title": "Masukkan alamat IP baru",
+                "description": "Masukkan alamat IP baru untuk perangkat. Koneksi akan diuji sebelum disimpan.",
+                "data": {
+                    "host": "Alamat IP perangkat"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Konfigurasi perangkat Tuya Remote Control",
+                "data": {
+                    "persistent_connection": "Koneksi persisten (lebih cepat tetapi bisa tidak stabil)",
+                    "control_type": "Tipe kontrol ('Auto' mencoba mendeteksi; '1' untuk perangkat lama dengan DPS 201/202; '2' untuk perangkat baru dengan DPS 1-13)"
+                }
+            }
+        }
+    }
+}

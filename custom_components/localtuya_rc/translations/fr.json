@@ -1,0 +1,114 @@
+{
+    "title": "Télécommande LocalTuyaIR",
+    "config": {
+        "abort": {
+            "already_configured": "Erreur : l'intégration pour cet appareil est déjà configurée.",
+            "unknown": "Erreur inconnue, veuillez consulter les journaux.",
+            "reconfigure_successful": "Appareil reconfiguré avec succès."
+        },
+        "error": {
+            "cannot_connect": "Impossible de se connecter à l'appareil. Vérifiez que l'adresse, l'identifiant de l'appareil, la clé locale et la version du protocole sont corrects.",
+            "cannot_connect_offline": "Impossible de joindre l'appareil. Vérifiez qu'il est allumé, connecté au Wi-Fi et sur le même sous-réseau que Home Assistant. Certains appareils Tuya bloquent le port 6668 une fois associés au cloud — essayez de redémarrer l'appareil.",
+            "cannot_connect_timeout": "Délai de connexion à l'appareil dépassé. Vérifiez que l'adresse IP est correcte et qu'aucun pare-feu ne bloque le port TCP 6668.",
+            "bad_key_or_version": "La clé locale ou la version du protocole est incorrecte. Vérifiez la clé locale sur la plateforme Tuya IoT ; la version du protocole est généralement 3.3, 3.4 ou 3.5.",
+            "protocol_mismatch": "L'appareil a renvoyé une charge utile inattendue. La version de protocole sélectionnée ne correspond pas à l'appareil — essayez-en une autre (3.3, 3.4 ou 3.5) ou laissez sur Auto.",
+            "bad_response_format": "L'appareil a envoyé une réponse impossible à analyser (JSON invalide). Cela arrive le plus souvent en protocole 3.5 avec d'anciennes versions de tinytuya — assurez-vous que tinytuya est à jour (1.18.0 ou supérieur).",
+            "no_control_type": "Impossible de détecter automatiquement le type de contrôle. Essayez de le définir manuellement ci-dessous : '1' pour les anciens appareils utilisant DPS 201/202, '2' pour les nouveaux utilisant DPS 1-13. Si aucun ne fonctionne, l'appareil n'est peut-être pas pris en charge.",
+            "tuya_not_found": "Aucun appareil Tuya trouvé. Assurez-vous qu'il est en ligne et connecté au même réseau, puis réessayez.",
+            "cloud_error": "Erreur lors de la connexion au cloud Tuya. Vérifiez votre configuration.",
+            "cloud_unauthorized": "Non autorisé à accéder au cloud Tuya. Vérifiez votre configuration : clé API et secret API.",
+            "cloud_no_devices": "Aucun appareil Tuya trouvé dans le cloud. Vérifiez votre configuration : assurez-vous d'avoir lié le bon compte et choisi la bonne région.",
+            "unknown": "Erreur inconnue, veuillez consulter les journaux."
+        },
+        "step": {
+            "method": {
+                "title": "Télécommande LocalTuyaIR",
+                "description": "Cette intégration vous permet d'utiliser votre télécommande universelle Tuya avec Home Assistant en local, sans dépendre du cloud Tuya.\n\nPour accéder à votre appareil Tuya Remote Control, nous avons besoin de sa clé de chiffrement locale. Cette étape peut être un peu délicate, consultez la documentation pour plus d'informations.\n\nVeuillez choisir la méthode que vous souhaitez utiliser pour configurer votre appareil Tuya Remote Control.",
+                "menu_options": {
+                    "cloud": "Obtenir la clé locale via l'API Tuya Cloud",
+                    "ip_method": "Saisir la clé locale manuellement"
+                }
+            },
+            "cloud": {
+                "title": "API Tuya Cloud",
+                "description": "Pour obtenir la clé locale, nous devons nous connecter au cloud Tuya. Veuillez saisir votre Client ID et Client Secret de l'API Tuya Cloud. Consultez la documentation pour plus d'informations.",
+                "data": {
+                    "region": "Région",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "Comment obtenir l'adresse IP de l'appareil",
+                "description": "Pour obtenir l'adresse IP de l'appareil, vous pouvez scanner votre réseau local ou la saisir manuellement.",
+                "menu_options": {
+                    "pre_scan": "Scanner le réseau local (recommandé)",
+                    "ask_ip": "Saisir l'adresse IP manuellement",
+                    "config": "Saisir l'adresse IP manuellement"
+                }
+            },
+            "ask_ip": {
+                "title": "Saisir l'adresse IP de l'appareil",
+                "description": "Veuillez saisir l'adresse IP de votre appareil Tuya Remote Control et sélectionnez l'appareil correspondant dans le cloud Tuya.",
+                "data": {
+                    "host": "Adresse IP de l'appareil",
+                    "device_id": "Nom de l'appareil"
+                }
+            },
+            "pre_scan": {
+                "title": "Analyse du réseau",
+                "description": "Nous recherchons votre appareil sur le réseau. Cela peut prendre jusqu'à 30 secondes."
+            },
+            "scan": {
+                "title": "Sélectionnez l'appareil",
+                "description": "Veuillez sélectionner l'adresse IP de votre appareil Tuya Remote Control.",
+                "data": {
+                    "host": "Adresse IP de l'appareil"
+                }
+            },
+            "config": {
+                "title": "Configurez votre appareil Tuya Remote Control",
+                "description": "Veuillez saisir l'adresse IP, l'identifiant de l'appareil et la clé locale de votre appareil Tuya Remote Control.",
+                "data": {
+                    "name": "Nom de l'appareil",
+                    "host": "Hôte",
+                    "device_id": "Identifiant de l'appareil",
+                    "local_key": "Clé locale",
+                    "protocol_version": "Version du protocole (généralement 3.3 ou 3.4)",
+                    "control_type": "Type de contrôle ('Auto' tente de détecter ; '1' pour les anciens appareils avec DPS 201/202 ; '2' pour les nouveaux avec DPS 1-13)",
+                    "persistent_connection": "Connexion persistante (plus rapide mais peut être instable)"
+                }
+            },
+            "reconfigure": {
+                "title": "Mettre à jour la connexion à l'appareil",
+                "description": "L'adresse IP de l'appareil a peut-être changé. Choisissez comment la mettre à jour.",
+                "menu_options": {
+                    "reconfigure_scan": "Rechercher l'appareil sur le réseau",
+                    "reconfigure_manual": "Saisir une nouvelle adresse IP manuellement"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "Analyse du réseau",
+                "description": "Recherche de l'appareil sur le réseau. Si l'appareil n'a pas été trouvé, vérifiez qu'il est en ligne et connecté au même réseau, puis cliquez sur Soumettre pour réessayer."
+            },
+            "reconfigure_manual": {
+                "title": "Saisir une nouvelle adresse IP",
+                "description": "Saisissez la nouvelle adresse IP de l'appareil. La connexion sera testée avant l'enregistrement.",
+                "data": {
+                    "host": "Adresse IP de l'appareil"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Configurez votre appareil Tuya Remote Control",
+                "data": {
+                    "persistent_connection": "Connexion persistante (plus rapide mais peut être instable)",
+                    "control_type": "Type de contrôle ('Auto' tente de détecter ; '1' pour les anciens appareils avec DPS 201/202 ; '2' pour les nouveaux avec DPS 1-13)"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,114 @@
+{
+    "title": "LocalTuyaIR Fernbedienung",
+    "config": {
+        "abort": {
+            "already_configured": "Fehler: Die Integration für dieses Gerät ist bereits konfiguriert.",
+            "unknown": "Unbekannter Fehler, bitte sehen Sie in den Logs nach.",
+            "reconfigure_successful": "Gerät erfolgreich neu konfiguriert."
+        },
+        "error": {
+            "cannot_connect": "Verbindung zum Gerät nicht möglich. Prüfen Sie, ob Adresse, Geräte-ID, Local Key und Protokollversion korrekt sind.",
+            "cannot_connect_offline": "Das Gerät ist nicht erreichbar. Stellen Sie sicher, dass es online ist, mit dem WLAN verbunden ist und sich im selben Subnetz wie Home Assistant befindet. Manche Tuya-Geräte blockieren Port 6668, sobald sie an die Cloud gebunden sind — versuchen Sie einen Neustart.",
+            "cannot_connect_timeout": "Zeitüberschreitung beim Verbindungsaufbau zum Gerät. Prüfen Sie die IP-Adresse und stellen Sie sicher, dass keine Firewall TCP-Port 6668 blockiert.",
+            "bad_key_or_version": "Local Key oder Protokollversion ist falsch. Überprüfen Sie den Local Key auf der Tuya IoT-Plattform; die Protokollversion ist üblicherweise 3.3, 3.4 oder 3.5.",
+            "protocol_mismatch": "Das Gerät hat eine unerwartete Antwort gesendet. Die ausgewählte Protokollversion passt nicht zum Gerät — versuchen Sie eine andere (3.3, 3.4 oder 3.5) oder lassen Sie sie auf Auto.",
+            "bad_response_format": "Das Gerät hat eine Antwort gesendet, die nicht verarbeitet werden konnte (ungültiges JSON). Tritt am häufigsten bei Protokoll 3.5 mit älteren tinytuya-Versionen auf — stellen Sie sicher, dass tinytuya aktuell ist (1.18.0 oder neuer).",
+            "no_control_type": "Der Control-Type konnte nicht automatisch erkannt werden. Setzen Sie ihn unten manuell: '1' für ältere Geräte mit DPS 201/202, '2' für neuere Geräte mit DPS 1-13. Wenn keiner funktioniert, wird das Gerät möglicherweise nicht unterstützt.",
+            "tuya_not_found": "Keine Tuya-Geräte gefunden. Stellen Sie sicher, dass das Gerät online und mit demselben Netzwerk verbunden ist, und versuchen Sie es erneut.",
+            "cloud_error": "Fehler beim Verbinden mit der Tuya-Cloud. Bitte überprüfen Sie Ihre Konfiguration.",
+            "cloud_unauthorized": "Keine Berechtigung für den Zugriff auf die Tuya-Cloud. Bitte überprüfen Sie Ihre Konfiguration: API-Key und API-Secret.",
+            "cloud_no_devices": "Keine Tuya-Geräte in der Cloud gefunden. Bitte überprüfen Sie Ihre Konfiguration, dass das richtige Konto verknüpft und die richtige Region ausgewählt ist.",
+            "unknown": "Unbekannter Fehler, bitte sehen Sie in den Logs nach."
+        },
+        "step": {
+            "method": {
+                "title": "LocalTuyaIR Fernbedienung",
+                "description": "Diese Integration ermöglicht es Ihnen, Ihr Tuya-Universalfernbedienungsgerät lokal mit Home Assistant zu verwenden, ohne die Tuya-Cloud zu benötigen.\n\nUm auf Ihr Tuya Remote Control-Gerät zuzugreifen, benötigen wir seinen lokalen Verschlüsselungsschlüssel. Dieser Schritt kann etwas knifflig sein, weitere Informationen finden Sie in der Dokumentation.\n\nBitte wählen Sie die Methode, mit der Sie Ihr Tuya Remote Control-Gerät konfigurieren möchten.",
+                "menu_options": {
+                    "cloud": "Local Key über die Tuya Cloud API beziehen",
+                    "ip_method": "Local Key manuell eingeben"
+                }
+            },
+            "cloud": {
+                "title": "Tuya Cloud API",
+                "description": "Um den Local Key zu beziehen, müssen wir uns mit der Tuya-Cloud verbinden. Bitte geben Sie Ihre Tuya Cloud API Client ID und das Client Secret ein. Weitere Informationen finden Sie in der Dokumentation.",
+                "data": {
+                    "region": "Region",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "IP-Adresse des Geräts ermitteln",
+                "description": "Um die IP-Adresse des Geräts zu ermitteln, können Sie Ihr lokales Netzwerk scannen oder sie manuell eingeben.",
+                "menu_options": {
+                    "pre_scan": "Lokales Netzwerk scannen (empfohlen)",
+                    "ask_ip": "IP-Adresse manuell eingeben",
+                    "config": "IP-Adresse manuell eingeben"
+                }
+            },
+            "ask_ip": {
+                "title": "IP-Adresse des Geräts eingeben",
+                "description": "Bitte geben Sie die IP-Adresse Ihres Tuya Remote Control-Geräts ein und wählen Sie das passende Gerät aus der Tuya-Cloud aus.",
+                "data": {
+                    "host": "IP-Adresse des Geräts",
+                    "device_id": "Gerätename"
+                }
+            },
+            "pre_scan": {
+                "title": "Netzwerksuche",
+                "description": "Wir suchen jetzt Ihr Gerät im Netzwerk. Dies kann bis zu 30 Sekunden dauern."
+            },
+            "scan": {
+                "title": "Gerät auswählen",
+                "description": "Bitte wählen Sie die IP-Adresse Ihres Tuya Remote Control-Geräts aus.",
+                "data": {
+                    "host": "IP-Adresse des Geräts"
+                }
+            },
+            "config": {
+                "title": "Tuya Remote Control-Gerät konfigurieren",
+                "description": "Bitte geben Sie die IP-Adresse, die Geräte-ID und den Local Key Ihres Tuya Remote Control-Geräts ein.",
+                "data": {
+                    "name": "Gerätename",
+                    "host": "Host",
+                    "device_id": "Geräte-ID",
+                    "local_key": "Local Key",
+                    "protocol_version": "Protokollversion (üblich 3.3 oder 3.4)",
+                    "control_type": "Control-Type ('Auto' versucht zu erkennen; '1' für ältere Geräte mit DPS 201/202; '2' für neuere Geräte mit DPS 1-13)",
+                    "persistent_connection": "Persistente Verbindung (schneller, kann aber instabil sein)"
+                }
+            },
+            "reconfigure": {
+                "title": "Geräteverbindung aktualisieren",
+                "description": "Die IP-Adresse des Geräts hat sich möglicherweise geändert. Wählen Sie aus, wie sie aktualisiert werden soll.",
+                "menu_options": {
+                    "reconfigure_scan": "Netzwerk nach dem Gerät durchsuchen",
+                    "reconfigure_manual": "Neue IP-Adresse manuell eingeben"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "Netzwerksuche",
+                "description": "Suche nach dem Gerät im Netzwerk. Falls das Gerät nicht gefunden wurde, prüfen Sie, ob es online und mit demselben Netzwerk verbunden ist, und drücken Sie dann Senden, um es erneut zu versuchen."
+            },
+            "reconfigure_manual": {
+                "title": "Neue IP-Adresse eingeben",
+                "description": "Geben Sie die neue IP-Adresse für das Gerät ein. Vor dem Speichern wird die Verbindung getestet.",
+                "data": {
+                    "host": "IP-Adresse des Geräts"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Tuya Remote Control-Gerät konfigurieren",
+                "data": {
+                    "persistent_connection": "Persistente Verbindung (schneller, kann aber instabil sein)",
+                    "control_type": "Control-Type ('Auto' versucht zu erkennen; '1' für ältere Geräte mit DPS 201/202; '2' für neuere Geräte mit DPS 1-13)"
+                }
+            }
+        }
+    }
+}

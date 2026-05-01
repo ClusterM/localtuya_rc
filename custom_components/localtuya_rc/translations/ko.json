@@ -1,0 +1,114 @@
+{
+    "title": "LocalTuyaIR 리모컨",
+    "config": {
+        "abort": {
+            "already_configured": "오류: 이 장치의 통합이 이미 구성되어 있습니다.",
+            "unknown": "알 수 없는 오류입니다. 로그를 확인하세요.",
+            "reconfigure_successful": "장치를 성공적으로 재구성했습니다."
+        },
+        "error": {
+            "cannot_connect": "장치에 연결할 수 없습니다. 주소, 장치 ID, 로컬 키 및 프로토콜 버전이 올바른지 확인하세요.",
+            "cannot_connect_offline": "장치에 도달할 수 없습니다. 장치가 온라인 상태이고 Wi-Fi에 연결되어 있으며 Home Assistant와 동일한 서브넷에 있는지 확인하세요. 일부 Tuya 장치는 클라우드에 바인딩된 후 6668 포트를 차단하므로 전원을 다시 켜 보세요.",
+            "cannot_connect_timeout": "장치 연결이 시간 초과되었습니다. IP 주소가 올바른지, 방화벽이 TCP 6668 포트를 차단하지 않는지 확인하세요.",
+            "bad_key_or_version": "로컬 키 또는 프로토콜 버전이 올바르지 않습니다. Tuya IoT 플랫폼에서 로컬 키를 다시 확인하세요. 프로토콜 버전은 일반적으로 3.3, 3.4 또는 3.5입니다.",
+            "protocol_mismatch": "장치가 예기치 않은 페이로드를 반환했습니다. 선택한 프로토콜 버전이 장치와 일치하지 않습니다 — 다른 버전(3.3, 3.4 또는 3.5)을 시도하거나 Auto로 두세요.",
+            "bad_response_format": "장치가 구문 분석할 수 없는 응답을 보냈습니다(잘못된 JSON). 이는 이전 버전의 tinytuya와 함께 프로토콜 3.5를 사용할 때 가장 자주 발생합니다. tinytuya를 1.18.0 이상으로 업데이트하세요.",
+            "no_control_type": "컨트롤 타입을 자동으로 감지할 수 없습니다. 아래에서 수동으로 설정해 보세요: DPS 201/202를 사용하는 구형 장치는 '1', DPS 1-13을 사용하는 신형 장치는 '2'. 둘 다 작동하지 않으면 지원되지 않는 장치일 수 있습니다.",
+            "tuya_not_found": "Tuya 장치를 찾을 수 없습니다. 장치가 온라인 상태이고 동일한 네트워크에 연결되어 있는지 확인하고 다시 시도하세요.",
+            "cloud_error": "Tuya 클라우드에 연결하는 동안 오류가 발생했습니다. 구성을 확인하세요.",
+            "cloud_unauthorized": "Tuya 클라우드에 액세스할 권한이 없습니다. 구성을 확인하세요: API 키와 API 시크릿.",
+            "cloud_no_devices": "클라우드에서 Tuya 장치를 찾을 수 없습니다. 구성을 확인하고 올바른 계정을 연결했으며 올바른 지역을 선택했는지 확인하세요.",
+            "unknown": "알 수 없는 오류입니다. 로그를 확인하세요."
+        },
+        "step": {
+            "method": {
+                "title": "LocalTuyaIR 리모컨",
+                "description": "이 통합을 사용하면 Tuya 클라우드 없이도 Home Assistant에서 로컬로 Tuya 만능 리모컨 장치를 사용할 수 있습니다.\n\nTuya Remote Control 장치에 액세스하려면 로컬 암호화 키가 필요합니다. 이 단계는 다소 까다로울 수 있으니 자세한 내용은 문서를 참조하세요.\n\nTuya Remote Control 장치를 구성하는 방법을 선택하세요.",
+                "menu_options": {
+                    "cloud": "Tuya Cloud API를 사용하여 로컬 키 가져오기",
+                    "ip_method": "로컬 키를 수동으로 입력"
+                }
+            },
+            "cloud": {
+                "title": "Tuya Cloud API",
+                "description": "로컬 키를 가져오려면 Tuya 클라우드에 연결해야 합니다. Tuya Cloud API의 Client ID와 Client Secret을 입력하세요. 자세한 내용은 문서를 참조하세요.",
+                "data": {
+                    "region": "지역",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "장치 IP 주소를 가져오는 방법",
+                "description": "장치의 IP 주소를 가져오려면 로컬 네트워크를 스캔하거나 수동으로 입력할 수 있습니다.",
+                "menu_options": {
+                    "pre_scan": "로컬 네트워크 스캔(권장)",
+                    "ask_ip": "IP 주소를 수동으로 입력",
+                    "config": "IP 주소를 수동으로 입력"
+                }
+            },
+            "ask_ip": {
+                "title": "장치 IP 주소 입력",
+                "description": "Tuya Remote Control 장치의 IP 주소를 입력하고 Tuya 클라우드에서 해당 장치를 선택하세요.",
+                "data": {
+                    "host": "장치 IP 주소",
+                    "device_id": "장치 이름"
+                }
+            },
+            "pre_scan": {
+                "title": "네트워크 스캔",
+                "description": "이제 네트워크에서 장치를 찾고 있습니다. 최대 30초가 소요될 수 있습니다."
+            },
+            "scan": {
+                "title": "장치 선택",
+                "description": "Tuya Remote Control 장치의 IP 주소를 선택하세요.",
+                "data": {
+                    "host": "장치 IP 주소"
+                }
+            },
+            "config": {
+                "title": "Tuya Remote Control 장치 구성",
+                "description": "Tuya Remote Control 장치의 IP 주소, 장치 ID 및 로컬 키를 입력하세요.",
+                "data": {
+                    "name": "장치 이름",
+                    "host": "호스트",
+                    "device_id": "장치 ID",
+                    "local_key": "로컬 키",
+                    "protocol_version": "프로토콜 버전(일반적으로 3.3 또는 3.4)",
+                    "control_type": "컨트롤 타입 ('Auto'는 자동 감지를 시도; '1'은 DPS 201/202를 사용하는 구형 장치; '2'는 DPS 1-13을 사용하는 신형 장치)",
+                    "persistent_connection": "지속 연결(빠르지만 불안정할 수 있음)"
+                }
+            },
+            "reconfigure": {
+                "title": "장치 연결 업데이트",
+                "description": "장치의 IP 주소가 변경되었을 수 있습니다. 업데이트 방법을 선택하세요.",
+                "menu_options": {
+                    "reconfigure_scan": "네트워크에서 장치 검색",
+                    "reconfigure_manual": "새 IP 주소를 수동으로 입력"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "네트워크 스캔",
+                "description": "네트워크에서 장치를 검색하고 있습니다. 장치를 찾을 수 없는 경우 장치가 온라인 상태이고 동일한 네트워크에 연결되어 있는지 확인한 다음 제출을 눌러 다시 시도하세요."
+            },
+            "reconfigure_manual": {
+                "title": "새 IP 주소 입력",
+                "description": "장치의 새 IP 주소를 입력하세요. 저장하기 전에 연결을 테스트합니다.",
+                "data": {
+                    "host": "장치 IP 주소"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Tuya Remote Control 장치 구성",
+                "data": {
+                    "persistent_connection": "지속 연결(빠르지만 불안정할 수 있음)",
+                    "control_type": "컨트롤 타입 ('Auto'는 자동 감지를 시도; '1'은 DPS 201/202를 사용하는 구형 장치; '2'는 DPS 1-13을 사용하는 신형 장치)"
+                }
+            }
+        }
+    }
+}

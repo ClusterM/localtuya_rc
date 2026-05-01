@@ -1,0 +1,114 @@
+{
+    "title": "LocalTuyaIR Uzaktan Kumanda",
+    "config": {
+        "abort": {
+            "already_configured": "Hata: Bu cihaz için entegrasyon zaten yapılandırılmış.",
+            "unknown": "Bilinmeyen hata, lütfen günlükleri kontrol edin.",
+            "reconfigure_successful": "Cihaz başarıyla yeniden yapılandırıldı."
+        },
+        "error": {
+            "cannot_connect": "Cihaza bağlanılamıyor. Adres, cihaz kimliği, local key ve protokol sürümünün doğru olduğundan emin olun.",
+            "cannot_connect_offline": "Cihaza ulaşılamıyor. Cihazın açık, Wi-Fi'ye bağlı ve Home Assistant ile aynı alt ağda olduğundan emin olun. Bazı Tuya cihazları buluta bağlandıktan sonra 6668 portunu kapatır — cihazı yeniden başlatmayı deneyin.",
+            "cannot_connect_timeout": "Cihaza bağlantı zaman aşımına uğradı. IP adresinin doğru olduğundan ve güvenlik duvarının TCP 6668 portunu engellemediğinden emin olun.",
+            "bad_key_or_version": "Local key veya protokol sürümü hatalı. Local key'i Tuya IoT Platformunda yeniden doğrulayın; protokol sürümü genellikle 3.3, 3.4 veya 3.5'tir.",
+            "protocol_mismatch": "Cihaz beklenmedik bir veri döndürdü. Seçilen protokol sürümü cihaza uymuyor — başka bir sürümü (3.3, 3.4 veya 3.5) deneyin ya da Auto bırakın.",
+            "bad_response_format": "Cihaz çözümlenemeyen bir yanıt gönderdi (geçersiz JSON). Bu en sık eski tinytuya sürümleri ile 3.5 protokolünde görülür — tinytuya'nın güncel olduğundan (1.18.0 veya üzeri) emin olun.",
+            "no_control_type": "Kontrol tipi otomatik olarak algılanamadı. Aşağıdan elle ayarlamayı deneyin: DPS 201/202 kullanan eski cihazlar için '1', DPS 1-13 kullanan yeni cihazlar için '2'. İkisi de işe yaramazsa cihaz desteklenmiyor olabilir.",
+            "tuya_not_found": "Tuya cihazı bulunamadı. Cihazın çevrimiçi ve aynı ağa bağlı olduğundan emin olun ve tekrar deneyin.",
+            "cloud_error": "Tuya cloud'a bağlanırken hata oluştu. Yapılandırmanızı kontrol edin.",
+            "cloud_unauthorized": "Tuya cloud'a erişim yetkisi yok. Yapılandırmanızı kontrol edin: API anahtarı ve API secret.",
+            "cloud_no_devices": "Cloud'da Tuya cihazı bulunamadı. Yapılandırmanızı kontrol edin: doğru hesabı bağladığınızdan ve doğru bölgeyi seçtiğinizden emin olun.",
+            "unknown": "Bilinmeyen hata, lütfen günlükleri kontrol edin."
+        },
+        "step": {
+            "method": {
+                "title": "LocalTuyaIR Uzaktan Kumanda",
+                "description": "Bu entegrasyon, Tuya evrensel uzaktan kumanda cihazınızı Home Assistant ile yerel olarak, Tuya cloud'a ihtiyaç duymadan kullanmanıza imkân verir.\n\nTuya Remote Control cihazınıza erişmek için yerel şifreleme anahtarına ihtiyacımız var. Bu adım biraz karmaşık olabilir; daha fazla bilgi için belgelere bakın.\n\nLütfen Tuya Remote Control cihazınızı yapılandırmak için kullanmak istediğiniz yöntemi seçin.",
+                "menu_options": {
+                    "cloud": "Local key'i Tuya Cloud API ile alın",
+                    "ip_method": "Local key'i elle girin"
+                }
+            },
+            "cloud": {
+                "title": "Tuya Cloud API",
+                "description": "Local key'i alabilmek için Tuya cloud'a bağlanmamız gerekir. Lütfen Tuya Cloud API Client ID ve Client Secret'ınızı girin. Daha fazla bilgi için belgelere bakın.",
+                "data": {
+                    "region": "Bölge",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "Cihaz IP adresini alma yöntemi",
+                "description": "Cihazın IP adresini almak için yerel ağınızı tarayabilir ya da elle girebilirsiniz.",
+                "menu_options": {
+                    "pre_scan": "Yerel ağı tara (önerilir)",
+                    "ask_ip": "IP adresini elle gir",
+                    "config": "IP adresini elle gir"
+                }
+            },
+            "ask_ip": {
+                "title": "Cihaz IP adresini girin",
+                "description": "Tuya Remote Control cihazınızın IP adresini girin ve Tuya cloud'dan ilgili cihazı seçin.",
+                "data": {
+                    "host": "Cihaz IP adresi",
+                    "device_id": "Cihaz adı"
+                }
+            },
+            "pre_scan": {
+                "title": "Ağ taraması",
+                "description": "Şimdi cihazınızı ağda arıyoruz. 30 saniyeye kadar sürebilir."
+            },
+            "scan": {
+                "title": "Cihazı seçin",
+                "description": "Lütfen Tuya Remote Control cihazınızın IP adresini seçin.",
+                "data": {
+                    "host": "Cihaz IP adresi"
+                }
+            },
+            "config": {
+                "title": "Tuya Remote Control cihazınızı yapılandırın",
+                "description": "Lütfen Tuya Remote Control cihazınızın IP adresini, cihaz kimliğini ve local key'ini girin.",
+                "data": {
+                    "name": "Cihaz adı",
+                    "host": "Host",
+                    "device_id": "Cihaz kimliği",
+                    "local_key": "Local key",
+                    "protocol_version": "Protokol sürümü (genellikle 3.3 veya 3.4)",
+                    "control_type": "Kontrol tipi ('Auto' otomatik algılamayı dener; '1' DPS 201/202 kullanan eski cihazlar; '2' DPS 1-13 kullanan yeni cihazlar)",
+                    "persistent_connection": "Kalıcı bağlantı (daha hızlı, ancak kararsız olabilir)"
+                }
+            },
+            "reconfigure": {
+                "title": "Cihaz bağlantısını güncelle",
+                "description": "Cihazın IP adresi değişmiş olabilir. Nasıl güncellemek istediğinizi seçin.",
+                "menu_options": {
+                    "reconfigure_scan": "Cihazı ağda ara",
+                    "reconfigure_manual": "Yeni IP adresini elle gir"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "Ağ taraması",
+                "description": "Cihaz ağda aranıyor. Cihaz bulunamazsa çevrimiçi olduğundan ve aynı ağa bağlı olduğundan emin olun, ardından yeniden denemek için Gönder'e basın."
+            },
+            "reconfigure_manual": {
+                "title": "Yeni IP adresini girin",
+                "description": "Cihaz için yeni IP adresini girin. Kaydetmeden önce bağlantı test edilecek.",
+                "data": {
+                    "host": "Cihaz IP adresi"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Tuya Remote Control cihazınızı yapılandırın",
+                "data": {
+                    "persistent_connection": "Kalıcı bağlantı (daha hızlı, ancak kararsız olabilir)",
+                    "control_type": "Kontrol tipi ('Auto' otomatik algılamayı dener; '1' DPS 201/202 kullanan eski cihazlar; '2' DPS 1-13 kullanan yeni cihazlar)"
+                }
+            }
+        }
+    }
+}

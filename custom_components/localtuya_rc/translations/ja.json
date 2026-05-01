@@ -1,0 +1,114 @@
+{
+    "title": "LocalTuyaIR リモコン",
+    "config": {
+        "abort": {
+            "already_configured": "エラー: このデバイスの統合はすでに設定されています。",
+            "unknown": "不明なエラーが発生しました。ログを確認してください。",
+            "reconfigure_successful": "デバイスを正常に再設定しました。"
+        },
+        "error": {
+            "cannot_connect": "デバイスに接続できません。アドレス、デバイス ID、ローカルキー、プロトコルバージョンが正しいか確認してください。",
+            "cannot_connect_offline": "デバイスに到達できません。デバイスがオンラインで Wi-Fi に接続されており、Home Assistant と同じサブネットにあることを確認してください。一部の Tuya デバイスはクラウドにバインドされるとポート 6668 をブロックします。電源を入れ直してみてください。",
+            "cannot_connect_timeout": "デバイスへの接続がタイムアウトしました。IP アドレスが正しく、ファイアウォールが TCP ポート 6668 をブロックしていないことを確認してください。",
+            "bad_key_or_version": "ローカルキーまたはプロトコルバージョンが正しくありません。Tuya IoT プラットフォームでローカルキーを再確認してください。プロトコルバージョンは通常 3.3、3.4、または 3.5 です。",
+            "protocol_mismatch": "デバイスから予期しないペイロードが返されました。選択したプロトコルバージョンがデバイスと一致していません。別のバージョン (3.3、3.4、3.5) を試すか、Auto のままにしてください。",
+            "bad_response_format": "デバイスから解析できない応答が返されました（無効な JSON）。これは古いバージョンの tinytuya でプロトコル 3.5 を使用したときによく発生します。tinytuya を 1.18.0 以上に更新してください。",
+            "no_control_type": "コントロールタイプを自動検出できませんでした。下で手動設定してみてください: 古いデバイス (DPS 201/202 を使用) は '1'、新しいデバイス (DPS 1-13 を使用) は '2'。どちらでも動作しない場合、デバイスが未対応の可能性があります。",
+            "tuya_not_found": "Tuya デバイスが見つかりません。オンラインで同じネットワークに接続されていることを確認し、もう一度試してください。",
+            "cloud_error": "Tuya クラウドへの接続中にエラーが発生しました。設定を確認してください。",
+            "cloud_unauthorized": "Tuya クラウドへのアクセス権限がありません。設定 (API キーと API シークレット) を確認してください。",
+            "cloud_no_devices": "クラウドに Tuya デバイスが見つかりません。設定を確認し、正しいアカウントをリンクし、正しいリージョンを選択してください。",
+            "unknown": "不明なエラーが発生しました。ログを確認してください。"
+        },
+        "step": {
+            "method": {
+                "title": "LocalTuyaIR リモコン",
+                "description": "この統合により、Tuya 万能リモコンデバイスを Tuya クラウドに依存せず、Home Assistant でローカルに使用できます。\n\nTuya Remote Control デバイスにアクセスするには、ローカル暗号化キーが必要です。この手順は少し複雑なので、詳細はドキュメントを参照してください。\n\nTuya Remote Control デバイスを設定する方法を選択してください。",
+                "menu_options": {
+                    "cloud": "Tuya Cloud API を使ってローカルキーを取得する",
+                    "ip_method": "ローカルキーを手動で入力する"
+                }
+            },
+            "cloud": {
+                "title": "Tuya Cloud API",
+                "description": "ローカルキーを取得するには Tuya クラウドに接続する必要があります。Tuya Cloud API の Client ID と Client Secret を入力してください。詳細はドキュメントを参照してください。",
+                "data": {
+                    "region": "リージョン",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret"
+                }
+            },
+            "ip_method": {
+                "title": "デバイスの IP アドレスを取得する方法",
+                "description": "デバイスの IP アドレスを取得するには、ローカルネットワークをスキャンするか、手動で入力できます。",
+                "menu_options": {
+                    "pre_scan": "ローカルネットワークをスキャン（推奨）",
+                    "ask_ip": "IP アドレスを手動で入力",
+                    "config": "IP アドレスを手動で入力"
+                }
+            },
+            "ask_ip": {
+                "title": "デバイスの IP アドレスを入力",
+                "description": "Tuya Remote Control デバイスの IP アドレスを入力し、Tuya クラウドから対応するデバイスを選択してください。",
+                "data": {
+                    "host": "デバイスの IP アドレス",
+                    "device_id": "デバイス名"
+                }
+            },
+            "pre_scan": {
+                "title": "ネットワークスキャン",
+                "description": "ネットワーク上のデバイスを検索しています。最大 30 秒かかる場合があります。"
+            },
+            "scan": {
+                "title": "デバイスを選択",
+                "description": "Tuya Remote Control デバイスの IP アドレスを選択してください。",
+                "data": {
+                    "host": "デバイスの IP アドレス"
+                }
+            },
+            "config": {
+                "title": "Tuya Remote Control デバイスを設定",
+                "description": "Tuya Remote Control デバイスの IP アドレス、デバイス ID、ローカルキーを入力してください。",
+                "data": {
+                    "name": "デバイス名",
+                    "host": "ホスト",
+                    "device_id": "デバイス ID",
+                    "local_key": "ローカルキー",
+                    "protocol_version": "プロトコルバージョン（通常 3.3 または 3.4）",
+                    "control_type": "コントロールタイプ ('Auto' は自動検出を試みます; '1' は DPS 201/202 を使用する古いデバイス; '2' は DPS 1-13 を使用する新しいデバイス)",
+                    "persistent_connection": "持続接続（高速ですが不安定になる場合があります）"
+                }
+            },
+            "reconfigure": {
+                "title": "デバイス接続を更新",
+                "description": "デバイスの IP アドレスが変更された可能性があります。更新方法を選択してください。",
+                "menu_options": {
+                    "reconfigure_scan": "ネットワークでデバイスを検索",
+                    "reconfigure_manual": "新しい IP アドレスを手動で入力"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "ネットワークスキャン",
+                "description": "ネットワーク上でデバイスを検索しています。デバイスが見つからない場合は、オンラインで同じネットワークに接続されていることを確認し、送信を押して再試行してください。"
+            },
+            "reconfigure_manual": {
+                "title": "新しい IP アドレスを入力",
+                "description": "デバイスの新しい IP アドレスを入力してください。保存前に接続テストを行います。",
+                "data": {
+                    "host": "デバイスの IP アドレス"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Tuya Remote Control デバイスを設定",
+                "data": {
+                    "persistent_connection": "持続接続（高速ですが不安定になる場合があります）",
+                    "control_type": "コントロールタイプ ('Auto' は自動検出を試みます; '1' は DPS 201/202 を使用する古いデバイス; '2' は DPS 1-13 を使用する新しいデバイス)"
+                }
+            }
+        }
+    }
+}
