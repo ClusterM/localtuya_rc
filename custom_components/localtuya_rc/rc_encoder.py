@@ -315,54 +315,136 @@ SIRC_LEADING_GAP = 600
 SIRC_GAP = 600
 SIRC_PULSE_0 = 600
 SIRC_PULSE_1 = 1200
+# Sony SIRC frame-period (start of one frame to start of the next), microseconds.
+SIRC_FRAME_PERIOD = 45000
+# Default number of frames per command. Sony receivers ignore single frames;
+# the spec requires a minimum of 3 to filter random IR flashes.
+SIRC_DEFAULT_REP = 3
+# Hard cap on rep to avoid extremely long transmissions from typos/misuse.
+SIRC_MAX_REP = 16
+
+def _sirc_build_frame(data, bit_length):
+    # Encode a single SIRC frame using width modulation. width_encode returns
+    # 2 + 2*bit_length elements ending with a trailing 600μs gap.
+    return pulse.width_encode(
+        data, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP,
+        SIRC_PULSE_0, SIRC_PULSE_1, bit_length,
+    )
+
+def _sirc_repeat(frame, repeats):
+    # Build the multi-frame SIRC transmission. A real Sony remote merges the
+    # trailing 600μs bit-gap of each frame with the inter-frame silence, so
+    # frame-period (start-to-start) stays at ~45 ms regardless of payload.
+    # We mimic that: drop the last 600μs gap from each frame and put a single
+    # inter-frame gap = 45000 - frame_len between copies. The very last frame
+    # ends on a pulse, matching the shape produced by physical Sony remotes
+    # and captured by Tuya blasters.
+    if repeats < 1 or repeats > SIRC_MAX_REP:
+        raise ValueError(f"rep must be in range 1-{SIRC_MAX_REP}")
+    if repeats == 1:
+        return frame
+    frame_no_tail = frame[:-1]
+    frame_len = sum(frame_no_tail)
+    inter_gap = max(SIRC_FRAME_PERIOD - frame_len, SIRC_GAP * 2)
+    out = []
+    for i in range(repeats):
+        out.extend(frame_no_tail)
+        if i != repeats - 1:
+            out.append(inter_gap)
+    return out
+
+def _sirc_decode_with_rep(values, bit_length):
+    """Decode a SIRC stream and detect how many copies of the same frame are
+    present. Returns (data_bytes, rep). Tolerates the last frame missing its
+    trailing 600μs gap, which is normal for raw Tuya captures."""
+    # Each frame occupies 2 + 2*bit_length elements when its trailing gap is
+    # present (or got merged into the inter-frame gap). The minimum we need
+    # to decode at least one frame is 2 + 2*bit_length - 1 elements, since
+    # the very last gap may be missing.
+    full_frame_size = 2 + bit_length * 2
+    min_frame_size = full_frame_size - 1
+
+    def _decode_at(start):
+        remaining = values[start:]
+        if len(remaining) < min_frame_size:
+            raise ValueError(f"SIRC: not enough data at offset {start}")
+        # width_decode insists on at least full_frame_size elements; if the
+        # frame is missing its trailing gap, append a synthetic one. Doing so
+        # is safe because width_decode does not validate the very last gap.
+        if len(remaining) < full_frame_size:
+            remaining = list(remaining) + [SIRC_GAP]
+        return pulse.width_decode(
+            remaining, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP,
+            SIRC_PULSE_0, SIRC_PULSE_1, bit_length,
+        )
+
+    first = _decode_at(0)
+    rep = 1
+    pos = full_frame_size
+    while pos + min_frame_size <= len(values):
+        try:
+            following = _decode_at(pos)
+        except (ValueError, IndexError):
+            break
+        if following != first:
+            break
+        rep += 1
+        pos += full_frame_size
+    return first, rep
+
+def _format_sirc_result(addr_str, cmd, rep):
+    base = f"addr={addr_str},cmd=0x{cmd:02X}"
+    if rep > 1:
+        return f"{base},rep={rep}"
+    return base
 
 def sirc_decode(values):
     # Decode Sony SIRC (12-bit = 5-bit address + 7-bit command)
-    data = pulse.width_decode(values, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP, SIRC_PULSE_0, SIRC_PULSE_1, 12)
+    data, rep = _sirc_decode_with_rep(values, 12)
     cmd = data[0] & 0b1111111
     addr = ((data[1] & 0b1111)) << 1 | (data[0] >> 7)
-    return f"addr=0x{addr:02X},cmd=0x{cmd:02X}"
+    return _format_sirc_result(f"0x{addr:02X}", cmd, rep)
 
-def sirc_encode(addr, cmd):
+def sirc_encode(addr, cmd, rep=SIRC_DEFAULT_REP):
     # Encode Sony SIRC (12-bit = 5-bit address + 7-bit command)
     if not (0x00 <= addr <= 0x1F):
         raise ValueError("Address must be in range 0x00-0x1F")
     if not (0x00 <= cmd <= 0x7F):
         raise ValueError("Command must be in range 0x00-0x7F")
     data = [(cmd & 0b1111111) | ((addr & 1) << 7), (addr >> 1) & 0b1111]
-    return pulse.width_encode(data, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP, SIRC_PULSE_0, SIRC_PULSE_1, 12)
+    return _sirc_repeat(_sirc_build_frame(data, 12), rep)
 
 def sirc15_decode(values):
     # Decode Sony SIRC (15-bit = 8-bit address + 7-bit command)
-    data = pulse.width_decode(values, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP, SIRC_PULSE_0, SIRC_PULSE_1, 15)
+    data, rep = _sirc_decode_with_rep(values, 15)
     cmd = data[0] & 0b1111111
     addr = (data[1] << 1) | (data[0] >> 7)
-    return f"addr=0x{addr:02X},cmd=0x{cmd:02X}"
+    return _format_sirc_result(f"0x{addr:02X}", cmd, rep)
 
-def sirc15_encode(addr, cmd):
+def sirc15_encode(addr, cmd, rep=SIRC_DEFAULT_REP):
     # Encode Sony SIRC (15-bit = 8-bit address + 7-bit command)
     if not (0x00 <= addr <= 0xFF):
         raise ValueError("Address must be in range 0x00-0xFF")
     if not (0x00 <= cmd <= 0x7F):
         raise ValueError("Command must be in range 0x00-0x7F")
     data = [(cmd & 0b1111111) | ((addr & 1) << 7), (addr >> 1)]
-    return pulse.width_encode(data, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP, SIRC_PULSE_0, SIRC_PULSE_1, 15)
+    return _sirc_repeat(_sirc_build_frame(data, 15), rep)
 
 def sirc20_decode(values):
     # Decode Sony SIRC (20-bit = 13-bit address + 7-bit command)
-    data = pulse.width_decode(values, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP, SIRC_PULSE_0, SIRC_PULSE_1, 20)
+    data, rep = _sirc_decode_with_rep(values, 20)
     cmd = data[0] & 0b1111111
     addr = (data[2] << 9) | (data[1] << 1) | (data[0] >> 7)
-    return f"addr=0x{addr:04X},cmd=0x{cmd:02X}"
+    return _format_sirc_result(f"0x{addr:04X}", cmd, rep)
 
-def sirc20_encode(addr, cmd):
+def sirc20_encode(addr, cmd, rep=SIRC_DEFAULT_REP):
     # Encode Sony SIRC (20-bit = 13-bit address + 7-bit command)
     if not (0x0000 <= addr <= 0x1FFF):
         raise ValueError("Address must be in range 0x0000-0x1FFF")
     if not (0x00 <= cmd <= 0x7F):
         raise ValueError("Command must be in range 0x00-0x7F")
     data = [(cmd & 0b1111111) | ((addr & 1) << 7), (addr >> 1) & 0xFF, (addr >> 9) & 0b1111]
-    return pulse.width_encode(data, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP, SIRC_PULSE_0, SIRC_PULSE_1, 20)
+    return _sirc_repeat(_sirc_build_frame(data, 20), rep)
 
 
 """ Kaseikyo protocol """

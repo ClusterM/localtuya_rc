@@ -213,11 +213,13 @@ The `toggle` parameter can be 0 or 1 and is optional. It helps to distinguish be
 
 #### Sony SIRC Protocols
 
-- **sirc**: The standard Sony Infrared Remote Control (SIRC) protocol, usually using 12 bits. Requires `addr` and `cmd`.
+Sony devices require the same SIRC frame to be repeated several times in a row (the receiver intentionally ignores single frames to filter out random IR flashes). The minimum specified by the protocol is 3 frames, but some devices need more (5–7 frames have been observed in the wild). All three SIRC variants therefore accept an optional `rep=N` parameter; when omitted, 3 frames are sent. When the integration *learns* a SIRC button it detects how many copies of the frame the original remote sent and stores `rep` accordingly, so a button captured from a device that needs 7 repeats is replayed with `rep=7` automatically.
 
-- **sirc15**: The 15-bit variant of the SIRC protocol, providing more commands. Parameters: `addr` and `cmd`.
+- **sirc**: The standard Sony Infrared Remote Control (SIRC) protocol, usually using 12 bits. Requires `addr` and `cmd`. Optional: `rep` (1–16, default 3).
 
-- **sirc20**: The 20-bit version of the SIRC protocol for devices with extended address and command space. Requires `addr` and `cmd`.
+- **sirc15**: The 15-bit variant of the SIRC protocol, providing more commands. Parameters: `addr` and `cmd`. Optional: `rep` (1–16, default 3).
+
+- **sirc20**: The 20-bit version of the SIRC protocol for devices with extended address and command space. Requires `addr` and `cmd`. Optional: `rep` (1–16, default 3).
 
 #### Other Protocols
 
