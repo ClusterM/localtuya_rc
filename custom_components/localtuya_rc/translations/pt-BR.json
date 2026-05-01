@@ -3,7 +3,8 @@
     "config": {
         "abort": {
             "already_configured": "Erro: a integração para este dispositivo já está configurada.",
-            "unknown": "Erro desconhecido, por favor verifique os logs."
+            "unknown": "Erro desconhecido, por favor verifique os logs.",
+            "reconfigure_successful": "Dispositivo reconfigurado com sucesso."
         },
         "error": {
             "cannot_connect": "Não é possível conectar ao dispositivo. Verifique se o endereço, o ID do dispositivo, a chave local e a versão do protocolo estão corretos.",
@@ -76,6 +77,25 @@
                     "protocol_version": "Versão do protocolo (geralmente 3.3 ou 3.4)",
                     "control_type": "Tipo de controle ('Auto' tenta detectar; '1' para dispositivos antigos com DPS 201/202; '2' para dispositivos novos com DPS 1-13)",
                     "persistent_connection": "Conexão persistente (mais rápida, mas exclusiva)"
+                }
+            },
+            "reconfigure": {
+                "title": "Atualizar conexão do dispositivo",
+                "description": "O endereço IP do dispositivo pode ter mudado. Escolha como atualizá-lo.",
+                "menu_options": {
+                    "reconfigure_scan": "Procurar o dispositivo na rede",
+                    "reconfigure_manual": "Inserir um novo endereço IP manualmente"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "Varredura de rede",
+                "description": "Procurando o dispositivo na rede. Se ele não for encontrado, verifique se está online e conectado à mesma rede e clique em enviar para tentar novamente."
+            },
+            "reconfigure_manual": {
+                "title": "Inserir novo endereço IP",
+                "description": "Insira o novo endereço IP do dispositivo. A conexão será testada antes de salvar.",
+                "data": {
+                    "host": "Endereço IP do dispositivo"
                 }
             }
         }
