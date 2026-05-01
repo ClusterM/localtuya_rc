@@ -329,7 +329,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Test connection at the new IP
             try:
-                device, status = await self.hass.async_add_executor_job(
+                _, status = await self.hass.async_add_executor_job(
                     self._test_connection, dev_id, new_ip, local_key, float(protocol_version))
             except Exception as e:
                 _LOGGER.error("Connection test error at %s: %s", new_ip, e, exc_info=True)
