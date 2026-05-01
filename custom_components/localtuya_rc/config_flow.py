@@ -34,6 +34,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_DEVICE_ID: '',
             CONF_LOCAL_KEY: '',
             CONF_PROTOCOL_VERSION: 'Auto',
+            CONF_CONTROL_TYPE: 'Auto',
             CONF_PERSISTENT_CONNECTION: DEFAULT_PERSISTENT_CONNECTION,
             CONF_REGION: 'eu',
             CONF_CLIENT_ID: '',
@@ -191,9 +192,18 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema
         )
 
-    def _test_connection(self, dev_id, address, local_key, version):
-        _LOGGER.debug("Testing connection to %s at %s with key %s", dev_id, address, local_key)
-        device = Contrib.IRRemoteControlDevice(dev_id=dev_id, address=address, local_key=local_key, version=version, connection_timeout=5, connection_retry_delay=0.5, connection_retry_limit=2)
+    def _test_connection(self, dev_id, address, local_key, version, control_type=0):
+        _LOGGER.debug("Testing connection to %s at %s with key %s, control_type=%s", dev_id, address, local_key, control_type)
+        device = Contrib.IRRemoteControlDevice(
+            dev_id=dev_id,
+            address=address,
+            local_key=local_key,
+            version=version,
+            control_type=control_type or 0,
+            connection_timeout=5,
+            connection_retry_delay=0.5,
+            connection_retry_limit=2,
+        )
         status = device.status()
         _LOGGER.debug("Connection test status: %s, control type detected: %s", status, device.control_type)
         return device, status
@@ -207,13 +217,27 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.config[CONF_LOCAL_KEY] = user_input[CONF_LOCAL_KEY]
             self.config[CONF_PERSISTENT_CONNECTION] = user_input[CONF_PERSISTENT_CONNECTION]
             self.config[CONF_PROTOCOL_VERSION] = user_input[CONF_PROTOCOL_VERSION]
+            self.config[CONF_CONTROL_TYPE] = user_input[CONF_CONTROL_TYPE]
+            # If user explicitly chose a control_type, pass it to the device
+            # constructor so tinytuya skips its own (sometimes flaky) detection
+            # and uses the supplied value as authoritative.
+            ct_input = user_input[CONF_CONTROL_TYPE]
+            ct_param = 0 if ct_input == "Auto" else int(ct_input)
             # Bruteforce the protocol version (in order of preference)
             try_versions = TUYA_VERSIONS if user_input[CONF_PROTOCOL_VERSION] == "Auto" else [user_input[CONF_PROTOCOL_VERSION]]
             version_ok = None
+            device = None
             for version in try_versions:
                 _LOGGER.debug("Trying protocol version %s", version)
                 try:
-                    device, status = await self.hass.async_add_executor_job(self._test_connection, user_input[CONF_DEVICE_ID], user_input[CONF_HOST], user_input[CONF_LOCAL_KEY], version)
+                    device, status = await self.hass.async_add_executor_job(
+                        self._test_connection,
+                        user_input[CONF_DEVICE_ID],
+                        user_input[CONF_HOST],
+                        user_input[CONF_LOCAL_KEY],
+                        version,
+                        ct_param,
+                    )
                 except Exception as e:
                     _LOGGER.error("Device test error, exception %s: %s", type(e), e, exc_info=True)
                     continue
@@ -240,12 +264,19 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(title=self.config[CONF_NAME], data=self.config)
         versions_sorted = TUYA_VERSIONS.copy()
         versions_sorted.sort()
+        # control_type default: keep the user's previous textual choice if any,
+        # or convert a numeric value (e.g. from a prior successful detection)
+        # back to its UI string form.
+        ct_default = self.config.get(CONF_CONTROL_TYPE, "Auto")
+        if isinstance(ct_default, int):
+            ct_default = str(ct_default) if ct_default in (1, 2) else "Auto"
         schema = vol.Schema({
             vol.Required(CONF_NAME, default=self.config[CONF_NAME]): cv.string,
             vol.Required(CONF_HOST, default=self.config[CONF_HOST]): cv.string,
             vol.Required(CONF_DEVICE_ID, default=self.config[CONF_DEVICE_ID]): cv.string,
             vol.Required(CONF_LOCAL_KEY, default=self.config[CONF_LOCAL_KEY]): cv.string,
             vol.Required(CONF_PROTOCOL_VERSION, default=self.config[CONF_PROTOCOL_VERSION]): vol.In(["Auto"] + versions_sorted),
+            vol.Required(CONF_CONTROL_TYPE, default=ct_default): vol.In(["Auto", "1", "2"]),
             vol.Required(CONF_PERSISTENT_CONNECTION, default=self.config[CONF_PERSISTENT_CONNECTION]): cv.boolean
         })
         return self.async_show_form(
@@ -375,12 +406,20 @@ class LocalTuyaIROptionsFlow(config_entries.OptionsFlow):
         """Manage the options."""
         if user_input is not None:
             self.config[CONF_PERSISTENT_CONNECTION] = user_input[CONF_PERSISTENT_CONNECTION]
+            # Translate the control_type UI value back to the integer stored
+            # in entry.data. "Auto" clears the cached value so tinytuya will
+            # re-run its own auto-detection on next setup.
+            ct_input = user_input.get(CONF_CONTROL_TYPE, "Auto")
+            self.config[CONF_CONTROL_TYPE] = 0 if ct_input == "Auto" else int(ct_input)
             _LOGGER.debug("Config updated: %s", self.config)
             self.hass.config_entries.async_update_entry(self.entry, data=self.config)
             return self.async_create_entry(data=self.config)
 
+        ct_default = self.config.get(CONF_CONTROL_TYPE, 0)
+        ct_default = str(ct_default) if ct_default in (1, 2) else "Auto"
         options_schema = vol.Schema({
-            vol.Required(CONF_PERSISTENT_CONNECTION, default=self.config.get(CONF_PERSISTENT_CONNECTION, DEFAULT_PERSISTENT_CONNECTION)): cv.boolean
+            vol.Required(CONF_PERSISTENT_CONNECTION, default=self.config.get(CONF_PERSISTENT_CONNECTION, DEFAULT_PERSISTENT_CONNECTION)): cv.boolean,
+            vol.Required(CONF_CONTROL_TYPE, default=ct_default): vol.In(["Auto", "1", "2"]),
         })
 
         return self.async_show_form(

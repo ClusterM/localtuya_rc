@@ -7,7 +7,7 @@
         },
         "error": {
             "cannot_connect": "Não é possível conectar ao dispositivo. Verifique se o endereço, o ID do dispositivo, a chave local e a versão do protocolo estão corretos.",
-            "no_control_type": "Não foi possível detectar o tipo de controle. Talvez o dispositivo não seja compatível, desculpe.",
+            "no_control_type": "Não foi possível detectar automaticamente o tipo de controle. Tente defini-lo manualmente abaixo: '1' para dispositivos antigos usando DPS 201/202, '2' para dispositivos novos usando DPS 1-13. Se nenhum funcionar, talvez o dispositivo não seja compatível.",
             "tuya_not_found": "Nenhum dispositivo Tuya encontrado. Certifique-se de que está online e conectado à mesma rede e tente novamente.",
             "cloud_error": "Erro ao conectar à nuvem Tuya. Por favor, verifique sua configuração.",
             "cloud_unauthorized": "Não autorizado a acessar a nuvem Tuya. Por favor, verifique sua configuração: chave de API e segredo de API.",
@@ -69,6 +69,7 @@
                     "device_id": "ID do dispositivo",
                     "local_key": "Chave local",
                     "protocol_version": "Versão do protocolo (geralmente 3.3 ou 3.4)",
+                    "control_type": "Tipo de controle ('Auto' tenta detectar; '1' para dispositivos antigos com DPS 201/202; '2' para dispositivos novos com DPS 1-13)",
                     "persistent_connection": "Conexão persistente (mais rápida, mas exclusiva)"
                 }
             }
@@ -79,7 +80,8 @@
             "init": {
                 "title": "Configurar seu dispositivo de Controle Remoto Tuya",
                 "data": {
-                    "persistent_connection": "Conexão persistente (mais rápida, mas exclusiva)"
+                    "persistent_connection": "Conexão persistente (mais rápida, mas exclusiva)",
+                    "control_type": "Tipo de controle ('Auto' tenta detectar; '1' para dispositivos antigos com DPS 201/202; '2' para dispositivos novos com DPS 1-13)"
                 }
             }
         }

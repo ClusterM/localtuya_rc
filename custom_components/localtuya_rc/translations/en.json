@@ -8,7 +8,7 @@
         },
         "error": {
             "cannot_connect": "Cannot connect to the device. Verify that address, device id, local key and protocol version are correct.",
-            "no_control_type": "Can't detect control type. Maybe the device is not supported, sorry.",
+            "no_control_type": "Can't auto-detect the control type. Try setting it manually below: '1' for older devices using DPS 201/202, '2' for newer devices using DPS 1-13. If neither works, the device may not be supported.",
             "tuya_not_found": "No Tuya devices found. Make sure that it's online and connected to the same network and try again.",
             "cloud_error": "Error while connecting to the Tuya cloud. Please check your configuration.",
             "cloud_unauthorized": "Unauthorized to access the Tuya cloud. Please check your configuration: API key and API secret.",
@@ -70,6 +70,7 @@
                     "device_id": "Device ID",
                     "local_key": "Local key",
                     "protocol_version": "Protocol version (usually 3.3 or 3.4)",
+                    "control_type": "Control type ('Auto' tries to detect it; '1' for older devices using DPS 201/202; '2' for newer devices using DPS 1-13)",
                     "persistent_connection": "Persistent connection (faster but can be unstable)"
                 }
             },
@@ -99,7 +100,8 @@
             "init": {
                 "title": "Configure your Tuya Remote Control device",
                 "data": {
-                    "persistent_connection": "Persistent connection (faster but can be unstable)"
+                    "persistent_connection": "Persistent connection (faster but can be unstable)",
+                    "control_type": "Control type ('Auto' tries to detect it; '1' for older devices using DPS 201/202; '2' for newer devices using DPS 1-13)"
                 }
             }
         }
