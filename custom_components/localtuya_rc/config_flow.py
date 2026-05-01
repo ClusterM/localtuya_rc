@@ -282,8 +282,8 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Find our device by ID
         new_ip = None
-        for ip, device in scan_devices.items():
-            if device.get("gwId") == dev_id:
+        for ip, found_device in scan_devices.items():
+            if found_device.get("gwId") == dev_id:
                 new_ip = ip
                 break
 
