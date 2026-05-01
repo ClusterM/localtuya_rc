@@ -296,7 +296,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Test connection at the new IP
         try:
-            device, status = await self.hass.async_add_executor_job(
+            _, status = await self.hass.async_add_executor_job(
                 self._test_connection, dev_id, new_ip, local_key, float(protocol_version))
         except Exception as e:
             _LOGGER.error("Connection test error at %s: %s", new_ip, e, exc_info=True)
@@ -316,33 +316,38 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config[CONF_HOST] = new_ip
         return self.async_update_reload_and_abort(entry, data=config, reason="reconfigure_successful")
 
-    async def async_step_reconfigure_manual(self, user_input=None, errors={}):
+    async def async_step_reconfigure_manual(self, user_input=None):
         """Allow user to manually enter a new IP address."""
         entry = self._get_reconfigure_entry()
         config = dict(entry.data)
+        errors = {}
+        default_host = config[CONF_HOST]
 
         if user_input is not None:
             new_ip = user_input[CONF_HOST]
+            default_host = new_ip
             dev_id = config[CONF_DEVICE_ID]
             local_key = config[CONF_LOCAL_KEY]
             protocol_version = config[CONF_PROTOCOL_VERSION]
 
             # Test connection at the new IP
+            status = None
             try:
                 _, status = await self.hass.async_add_executor_job(
                     self._test_connection, dev_id, new_ip, local_key, float(protocol_version))
             except Exception as e:
                 _LOGGER.error("Connection test error at %s: %s", new_ip, e, exc_info=True)
-                return await self.async_step_reconfigure_manual(errors={"base": "cannot_connect"})
+                errors["base"] = "cannot_connect"
 
-            if "Error" in status:
-                return await self.async_step_reconfigure_manual(errors={"base": "cannot_connect"})
+            if status is not None and "Error" in status:
+                errors["base"] = "cannot_connect"
 
-            config[CONF_HOST] = new_ip
-            return self.async_update_reload_and_abort(entry, data=config, reason="reconfigure_successful")
+            if not errors:
+                config[CONF_HOST] = new_ip
+                return self.async_update_reload_and_abort(entry, data=config, reason="reconfigure_successful")
 
         schema = vol.Schema({
-            vol.Required(CONF_HOST, default=config[CONF_HOST]): cv.string,
+            vol.Required(CONF_HOST, default=default_host): cv.string,
         })
         return self.async_show_form(
             step_id="reconfigure_manual",
