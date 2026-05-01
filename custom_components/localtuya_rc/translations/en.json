@@ -3,7 +3,8 @@
     "config": {
         "abort": {
             "already_configured": "Error: integration for this device is already configured.",
-            "unknown": "Unknown error, please check logs."
+            "unknown": "Unknown error, please check logs.",
+            "reconfigure_successful": "Device reconfigured successfully."
         },
         "error": {
             "cannot_connect": "Cannot connect to the device. Verify that address, device id, local key and protocol version are correct.",
@@ -70,6 +71,25 @@
                     "local_key": "Local key",
                     "protocol_version": "Protocol version (usually 3.3 or 3.4)",
                     "persistent_connection": "Persistent connection (faster but can be unstable)"
+                }
+            },
+            "reconfigure": {
+                "title": "Update device connection",
+                "description": "The device IP address may have changed. Choose how to update it.",
+                "menu_options": {
+                    "reconfigure_scan": "Scan the network for the device",
+                    "reconfigure_manual": "Enter a new IP address manually"
+                }
+            },
+            "reconfigure_scan": {
+                "title": "Network scan",
+                "description": "Scanning for the device on the network. If the device was not found, check that it is online and connected to the same network, then submit to retry."
+            },
+            "reconfigure_manual": {
+                "title": "Enter new IP address",
+                "description": "Enter the new IP address for the device. The connection will be tested before saving.",
+                "data": {
+                    "host": "Device IP address"
                 }
             }
         }
