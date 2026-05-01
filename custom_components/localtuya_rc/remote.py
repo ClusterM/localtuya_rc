@@ -12,6 +12,7 @@ from .const import (
     DEFAULT_FRIENDLY_NAME,
     CONF_LOCAL_KEY,
     CONF_PROTOCOL_VERSION,
+    CONF_CONTROL_TYPE,
     CONF_CLOUD_INFO,
     CONF_PERSISTENT_CONNECTION,
     CODE_STORAGE_VERSION,
@@ -63,10 +64,10 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities, discovery_info=None):
     """Set up the Tuya IR Remote Control entry."""
-    await async_setup_platform(hass, entry.data, async_add_entities, discovery_info)
+    await async_setup_platform(hass, entry.data, async_add_entities, discovery_info, entry=entry)
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None, entry=None):
     """Set up platform."""
     if config == None:
         _LOGGER.error("Configuration is empty")
@@ -79,14 +80,15 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     protocol_version = config.get(CONF_PROTOCOL_VERSION)
     cloud_info = config.get(CONF_CLOUD_INFO, None)
     persistent_connection = config.get(CONF_PERSISTENT_CONNECTION, DEFAULT_PERSISTENT_CONNECTION)
+    control_type = config.get(CONF_CONTROL_TYPE, 0)
 
     if name is None or host is None or dev_id is None or local_key is None:
         _LOGGER.error("Missing required configuration items")
         return
 
-    _LOGGER.debug("Setting up Tuya IR Remote Control: name=%s, dev_id=%s, host=%s, local_key=%s, protocol_version=%s, persistent_connection=%s, cloud_info=%s", name, dev_id, host, local_key, protocol_version, persistent_connection, cloud_info)
+    _LOGGER.debug("Setting up Tuya IR Remote Control: name=%s, dev_id=%s, host=%s, local_key=%s, protocol_version=%s, persistent_connection=%s, control_type=%s, cloud_info=%s", name, dev_id, host, local_key, protocol_version, persistent_connection, control_type, cloud_info)
 
-    remote = TuyaRC(name, dev_id, host, local_key, protocol_version, persistent_connection, cloud_info)
+    remote = TuyaRC(name, dev_id, host, local_key, protocol_version, persistent_connection, cloud_info, control_type=control_type, entry=entry)
     # Update availability of the device
     await hass.async_add_executor_job(remote._update_availibility)
 
@@ -94,7 +96,15 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 class TuyaRC(RemoteEntity):
-    def __init__(self, name, dev_id, address, local_key, protocol_version, persistent_connection=DEFAULT_PERSISTENT_CONNECTION, cloud_info=None):
+    # Short network timeouts so that an offline device fails fast and does not
+    # block the HA executor pool for tens of seconds. With these values, an
+    # unreachable device returns an error in roughly 5 * 2 + 0.5 = ~10s instead
+    # of the tinytuya defaults of ~45s.
+    _CONNECTION_TIMEOUT = 5
+    _CONNECTION_RETRY_DELAY = 0.5
+    _CONNECTION_RETRY_LIMIT = 2
+
+    def __init__(self, name, dev_id, address, local_key, protocol_version, persistent_connection=DEFAULT_PERSISTENT_CONNECTION, cloud_info=None, control_type=0, entry=None):
         self._name = name
         self._dev_id = dev_id
         self._address = address
@@ -102,6 +112,8 @@ class TuyaRC(RemoteEntity):
         self._protocol_version = protocol_version
         self._persistent_connection = persistent_connection
         self._cloud_info = cloud_info
+        self._control_type = control_type or 0
+        self._entry = entry
         
         self._storage = None
         self._codes = {}
@@ -114,17 +126,81 @@ class TuyaRC(RemoteEntity):
     def _init(self):
         if self._device:
             return
-        _LOGGER.debug("Initializing device %s (address: %s, local_key: %s, protocol_version: %s, persistent_connection: %s)...", self._dev_id, self._address, self._local_key, self._protocol_version, self._persistent_connection)
-        self._device = Contrib.IRRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version), persist=self._persistent_connection)
-        _LOGGER.debug("Initializing device %s (address: %s, local_key: %s, protocol_version: %s, persistent_connection: %s)...", self._dev_id, self._address, self._local_key, self._protocol_version, self._persistent_connection)
-        self._device_RF = RFRemoteControlDevice.RFRemoteControlDevice(dev_id=self._dev_id, address=self._address, local_key=self._local_key, version=float(self._protocol_version), persist=self._persistent_connection)
+        _LOGGER.debug("Initializing device %s (address: %s, protocol_version: %s, persistent_connection: %s, control_type: %s)...", self._dev_id, self._address, self._protocol_version, self._persistent_connection, self._control_type)
+        # Passing a non-zero control_type tells tinytuya to skip the network-heavy
+        # detect_control_type() call that would otherwise run inside __init__ and
+        # block for many seconds on an offline device.
+        self._device = Contrib.IRRemoteControlDevice(
+            dev_id=self._dev_id,
+            address=self._address,
+            local_key=self._local_key,
+            version=float(self._protocol_version),
+            persist=self._persistent_connection,
+            control_type=self._control_type or 0,
+            connection_timeout=self._CONNECTION_TIMEOUT,
+            connection_retry_delay=self._CONNECTION_RETRY_DELAY,
+            connection_retry_limit=self._CONNECTION_RETRY_LIMIT,
+        )
         _LOGGER.debug("Device %s initialized.", self._dev_id)
+
+    def _init_rf(self):
+        # RF device is created on demand (lazy) so that _update_availibility()
+        # does not pay for a second blocking constructor on every poll.
+        if self._device_RF:
+            return
+        _LOGGER.debug("Initializing RF device %s...", self._dev_id)
+        self._device_RF = RFRemoteControlDevice.RFRemoteControlDevice(
+            dev_id=self._dev_id,
+            address=self._address,
+            local_key=self._local_key,
+            version=float(self._protocol_version),
+            persist=self._persistent_connection,
+            control_type=self._control_type or 0,
+            connection_timeout=self._CONNECTION_TIMEOUT,
+            connection_retry_delay=self._CONNECTION_RETRY_DELAY,
+            connection_retry_limit=self._CONNECTION_RETRY_LIMIT,
+        )
+        _LOGGER.debug("RF device %s initialized.", self._dev_id)
 
     def _deinit(self):
         if self._device:
-            self._device.close()
+            try:
+                self._device.close()
+            except Exception:
+                _LOGGER.debug("Error closing IR device", exc_info=True)
             self._device = None
             _LOGGER.debug("Device %s deinitialized.", self._dev_id)
+        if self._device_RF:
+            try:
+                self._device_RF.close()
+            except Exception:
+                _LOGGER.debug("Error closing RF device", exc_info=True)
+            self._device_RF = None
+            _LOGGER.debug("RF device %s deinitialized.", self._dev_id)
+
+    def _persist_control_type(self, control_type):
+        """Persist a freshly detected control_type to the config entry.
+
+        Called from the executor thread (via _update_availibility), so we
+        schedule the actual update on the event loop via call_soon_threadsafe.
+        Skips silently when hass/entry are not yet wired up (e.g. during the
+        very first availability probe before async_add_entities()).
+        """
+        if not self._entry or not control_type:
+            return
+        if self._entry.data.get(CONF_CONTROL_TYPE) == control_type:
+            return
+        hass = getattr(self, "hass", None)
+        if hass is None:
+            return
+        new_data = {**self._entry.data, CONF_CONTROL_TYPE: control_type}
+        entry = self._entry
+
+        def _do_update():
+            hass.config_entries.async_update_entry(entry, data=new_data)
+
+        hass.loop.call_soon_threadsafe(_do_update)
+        _LOGGER.debug("Persisted control_type=%s for %s", control_type, self._dev_id)
 
     @property
     def available(self):
@@ -196,7 +272,7 @@ class TuyaRC(RemoteEntity):
                     _LOGGER.debug("Sending command as base64: '%s'", pulses)
                     try:
                         return self._device.send_button(pulses)
-                    except:
+                    except Exception as e:
                         _LOGGER.error("Failed to send command as base64, exception %s: %s", type(e), e, exc_info=True)
                         raise HomeAssistantError("tinytuya library internal error, please check the logs.")
                 else:
@@ -205,7 +281,7 @@ class TuyaRC(RemoteEntity):
                     _LOGGER.debug("Converted to base64: '%s'", b64)
                     try:
                         return self._device.send_button(b64)
-                    except:
+                    except Exception as e:
                         _LOGGER.error("Failed to send command as pulses, exception %s: %s", type(e), e, exc_info=True)
                         raise HomeAssistantError("tinytuya library internal error, please check the logs.")
             except Exception as e:
@@ -214,17 +290,21 @@ class TuyaRC(RemoteEntity):
     
     def _receive_button_rf(self, timeout):
         with self._lock:
-            self._init()
             try:
-                return self._device_RF.rf_receive_button(timeout=timeout)
+                self._init_rf()
+                try:
+                    return self._device_RF.rf_receive_button(timeout=timeout)
+                except Exception as e:
+                    _LOGGER.error("Failed to receive RF button, exception %s: %s", type(e), e, exc_info=True)
+                    raise HomeAssistantError("tinytuya library internal rf error, please check the logs.")
             except Exception as e:
-                _LOGGER.error("Failed to receive RF button, exception %s: %s", type(e), e, exc_info=True)
-                raise HomeAssistantError("tinytuya library internal rf error, please check the logs.")
+                self._deinit()
+                raise e
     
     def _send_button_rf(self, base64):
         with self._lock:
             try:
-                self._init()
+                self._init_rf()
                 try:
                     _LOGGER.debug("Sending command as base64: '%s'", base64)
                     return self._device_RF.rf_send_button(base64)
@@ -255,12 +335,30 @@ class TuyaRC(RemoteEntity):
                 self._init()
                 status = self._device.status()
                 _LOGGER.debug(f"Device status: {status}")
-                self._available = status and not "Error" in status
+                self._available = bool(status) and "Error" not in status
                 if not self._available:
                     _LOGGER.error("Device is not available, status: %s", status)
             except Exception as e:
                 self._available = False
                 _LOGGER.error("Failed to update device, exception %s: %s", type(e), e, exc_info=True)
+            # If status succeeded but tinytuya could not detect the control_type
+            # (e.g. device was offline at the time of construction), force a
+            # full re-init on the next poll so detection is retried with a now
+            # responsive device. Without this, send_command() would later raise
+            # RuntimeError on tinytuya >= 1.18.0.
+            if self._available and self._device and not self._device.control_type:
+                _LOGGER.warning(
+                    "control_type for %s is not detected, will re-initialize on next poll",
+                    self._dev_id,
+                )
+                self._available = False
+            # If detection succeeded and we did not have it cached, persist so
+            # future restarts skip the slow detect_control_type() altogether.
+            # We compare against the entry data (not just the in-memory copy)
+            # so that a missed persist on a previous tick is retried.
+            if self._available and self._device and self._device.control_type:
+                self._control_type = self._device.control_type
+                self._persist_control_type(self._control_type)
             if not self._available:
                 self._deinit()
             _LOGGER.debug("Device %s is available: %s", self._dev_id, self._available)

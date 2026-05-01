@@ -231,6 +231,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 # Ok!
                 self.config[CONF_PROTOCOL_VERSION] = version_ok
+                self.config[CONF_CONTROL_TYPE] = device.control_type
                 if self.cloud and 'key' in self.cloud_info:
                     del self.cloud_info['key'] # to protect the key
                 self.config[CONF_CLOUD_INFO] = self.cloud_info if self.cloud else None
@@ -296,7 +297,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Test connection at the new IP
         try:
-            _, status = await self.hass.async_add_executor_job(
+            device, status = await self.hass.async_add_executor_job(
                 self._test_connection, dev_id, new_ip, local_key, float(protocol_version))
         except Exception as e:
             _LOGGER.error("Connection test error at %s: %s", new_ip, e, exc_info=True)
@@ -314,6 +315,8 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         config[CONF_HOST] = new_ip
+        if device.control_type:
+            config[CONF_CONTROL_TYPE] = device.control_type
         return self.async_update_reload_and_abort(entry, data=config, reason="reconfigure_successful")
 
     async def async_step_reconfigure_manual(self, user_input=None):
@@ -332,8 +335,9 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Test connection at the new IP
             status = None
+            device = None
             try:
-                _, status = await self.hass.async_add_executor_job(
+                device, status = await self.hass.async_add_executor_job(
                     self._test_connection, dev_id, new_ip, local_key, float(protocol_version))
             except Exception as e:
                 _LOGGER.error("Connection test error at %s: %s", new_ip, e, exc_info=True)
@@ -344,6 +348,8 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not errors:
                 config[CONF_HOST] = new_ip
+                if device is not None and device.control_type:
+                    config[CONF_CONTROL_TYPE] = device.control_type
                 return self.async_update_reload_and_abort(entry, data=config, reason="reconfigure_successful")
 
         schema = vol.Schema({
