@@ -8,7 +8,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PKG_DIR = ROOT / "custom_components" / "flipper_rc"
+PKG_DIR = ROOT / "custom_components" / "localtuya_rc"
 
 # Load `pulse` and `manchester` as top-level modules first so `rc_encoder`
 # can `import pulse` / `import manchester` from its fallback path.
