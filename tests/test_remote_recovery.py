@@ -91,8 +91,10 @@ def remote_module(monkeypatch):
     _install_module(monkeypatch, "homeassistant.helpers.storage", Store=object)
 
     contrib = types.SimpleNamespace(IRRemoteControlDevice=object)
-tinytuya = _install_module(monkeypatch, "tinytuya", Contrib=contrib, ERR_TIMEOUT=902)
-tinytuya.__path__ = []
+    tinytuya = _install_module(
+        monkeypatch, "tinytuya", Contrib=contrib, ERR_TIMEOUT=902
+    )
+    tinytuya.__path__ = []
     _install_module(
         monkeypatch,
         "tinytuya.Contrib",
@@ -173,8 +175,8 @@ def _make_remote(remote_module, statuses, control_type=1, study_end_error=None):
 
 @pytest.mark.parametrize(
     "initial_status",
-    [_status_error("902"), None],
-    ids=["timeout", "empty-response"],
+    [_status_error("902"), _status_error(902), None],
+    ids=["string-timeout", "numeric-timeout", "empty-response"],
 )
 def test_reachable_silent_device_wakes_after_study_end(
     remote_module, initial_status

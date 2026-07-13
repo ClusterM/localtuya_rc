@@ -62,7 +62,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 _LOGGER = logging.getLogger(__name__)
 
-# Serialize platform update (polling) calls; send/learn actions are guarded by the instance lock.
+# Serialize Home Assistant polls and actions before executor work; the instance
+# lock protects TinyTuya I/O.
 PARALLEL_UPDATES = 1
 
 
@@ -364,13 +365,12 @@ class TuyaRC(RemoteEntity):
             # tinytuya documents that an IR bridge can accept a connection after
             # reboot but ignore status() until it receives a command. study_end()
             # is its non-transmitting wake probe for the detected control type.
-if self._device.control_type and (
-    status is None
-    or (
-        isinstance(status, dict)
-        and str(status.get("Err", "")).strip() == str(ERR_TIMEOUT)
-    )
-):
+            if self._device.control_type and (
+                status is None
+                or (
+                    isinstance(status, dict)
+                    and str(status.get("Err", "")).strip() == str(ERR_TIMEOUT)
+                )
             ):
                 _LOGGER.debug(
                     "Waking IR device %s after an unresponsive status request",
