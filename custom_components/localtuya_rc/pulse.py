@@ -1,6 +1,6 @@
 MAX_ERROR_PERCENT = 25
 
-def in_range(value, target):
+def in_range(value, target, max_error_percent=MAX_ERROR_PERCENT):
     """
     Checks if a given value is within a certain percentage range of a target value.
 
@@ -12,10 +12,10 @@ def in_range(value, target):
         bool: True if the value is within the specified range of the target, False otherwise.
     """
     # Checks if value is within MAX_ERROR_PERCENT% of target
-    max_error = MAX_ERROR_PERCENT / 100
+    max_error = max_error_percent / 100
     return target * (1 - max_error) <= value <= target * (1 + max_error)
 
-def distance_decode(pulses, leading_pulse, leading_gap, pulse, gap_0, gap_1, bit_length, msb_first=False):
+def distance_decode(pulses, leading_pulse, leading_gap, pulse, gap_0, gap_1, bit_length, msb_first=False, max_error_percent=MAX_ERROR_PERCENT):
     """
     Decode a sequence of pulses into bits based on provided timings and bit length.
 
@@ -36,9 +36,9 @@ def distance_decode(pulses, leading_pulse, leading_gap, pulse, gap_0, gap_1, bit
         ValueError: If the pulse sequence does not match the expected format.
     """
     # Decode pulses into bits based on provided timings and bit_length
-    if not in_range(pulses[0], leading_pulse):
+    if not in_range(pulses[0], leading_pulse, max_error_percent):
         raise ValueError(f"Invalid leading pulse length: {pulses[0]}")
-    if not in_range(pulses[1], leading_gap):
+    if not in_range(pulses[1], leading_gap, max_error_percent):
         raise ValueError(f"Invalid leading gap length: {pulses[1]}")
     if len(pulses) < 3 + bit_length * 2:
         raise ValueError(f"Invalid data length: {len(pulses)} (must be at least {3 + bit_length * 2})")
@@ -52,10 +52,10 @@ def distance_decode(pulses, leading_pulse, leading_gap, pulse, gap_0, gap_1, bit
         i = 0
         for bit in range(8):
             p = 3 + decoded * 2
-            if not in_range(pulses[p - 1], pulse):
+            if not in_range(pulses[p - 1], pulse, max_error_percent):
                 raise ValueError(f"Invalid pulse length: {pulses[p - 1]}")
             v = pulses[p]
-            if not in_range(v, gap_0) and not in_range(v, gap_1):
+            if not in_range(v, gap_0, max_error_percent) and not in_range(v, gap_1, max_error_percent):
                 raise ValueError(f"Invalid gap length: {v}")
             v = long_pulse_v if v > (gap_0 + gap_1) / 2 else short_pulse_v
             if msb_first:
@@ -200,4 +200,3 @@ def width_encode(values, leading_pulse, leading_gap, gap, pulse_0, pulse_1, bit_
         if bit_length is not None and total >= bit_length:
             break
     return pulses
-

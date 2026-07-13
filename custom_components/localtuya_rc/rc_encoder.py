@@ -45,10 +45,11 @@ NEC_LEADING_GAP = 4500
 NEC_PULSE = 560
 NEC_GAP_0 = 560
 NEC_GAP_1 = 1690
+NEC_MAX_ERROR_PERCENT = 35
 
 def nec_decode(values):
     # Decode 32-bit NEC
-    data = pulse.distance_decode(values, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1, 32)
+    data = pulse.distance_decode(values, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1, 32, max_error_percent=NEC_MAX_ERROR_PERCENT)
     if data[0] != data[1] ^ 0xFF or data[2] != data[3] ^ 0xFF:
         raise ValueError("Invalid NEC xored data")
     addr = data[0]
@@ -67,7 +68,7 @@ def nec_encode(addr, cmd):
 
 def nec_ext_decode(values):
     # Decode 32-bit NEC (extended)
-    data = pulse.distance_decode(values, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1, 32)
+    data = pulse.distance_decode(values, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1, 32, max_error_percent=NEC_MAX_ERROR_PERCENT)
     addr = data[0] | (data[1] << 8)
     cmd = data[2] | (data[3] << 8)
     return f"addr=0x{addr:04X},cmd=0x{cmd:04X}"
