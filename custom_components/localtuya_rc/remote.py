@@ -4,7 +4,7 @@ import asyncio
 import struct
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
-from tinytuya import Contrib, ERR_TIMEOUT
+from tinytuya import Contrib, ERR_JSON, ERR_TIMEOUT
 from tinytuya.Contrib import RFRemoteControlDevice
 import threading
 
@@ -363,13 +363,17 @@ class TuyaRC(RemoteEntity):
             self._init()
             status = self._device.status()
             # tinytuya documents that an IR bridge can accept a connection after
-            # reboot but ignore status() until it receives a command. study_end()
-            # is its non-transmitting wake probe for the detected control type.
+            # reboot but ignore status() until it receives a command. A power-
+            # cycled bridge answers status() with ERR_JSON 900 ("json obj data
+            # unvalid") — its DP cache is empty until a SET repopulates it — as
+            # well as the ERR_TIMEOUT case. study_end() is its non-transmitting
+            # wake probe for the detected control type; retry status() once after.
             if self._device.control_type and (
                 status is None
                 or (
                     isinstance(status, dict)
-                    and str(status.get("Err", "")).strip() == str(ERR_TIMEOUT)
+                    and str(status.get("Err", "")).strip()
+                    in (str(ERR_JSON), str(ERR_TIMEOUT))
                 )
             ):
                 _LOGGER.debug(
