@@ -92,7 +92,7 @@ def remote_module(monkeypatch):
 
     contrib = types.SimpleNamespace(IRRemoteControlDevice=object)
     tinytuya = _install_module(
-        monkeypatch, "tinytuya", Contrib=contrib, ERR_TIMEOUT=902
+        monkeypatch, "tinytuya", Contrib=contrib, ERR_JSON=900, ERR_TIMEOUT=902
     )
     tinytuya.__path__ = []
     _install_module(
@@ -175,8 +175,20 @@ def _make_remote(remote_module, statuses, control_type=1, study_end_error=None):
 
 @pytest.mark.parametrize(
     "initial_status",
-    [_status_error("902"), _status_error(902), None],
-    ids=["string-timeout", "numeric-timeout", "empty-response"],
+    [
+        _status_error("902"),
+        _status_error(902),
+        _status_error("900"),
+        _status_error(900),
+        None,
+    ],
+    ids=[
+        "string-timeout",
+        "numeric-timeout",
+        "string-json",
+        "numeric-json",
+        "empty-response",
+    ],
 )
 def test_reachable_silent_device_wakes_after_study_end(
     remote_module, initial_status
@@ -195,8 +207,8 @@ def test_reachable_silent_device_wakes_after_study_end(
 
 @pytest.mark.parametrize(
     "retry_status",
-    [None, _status_error("902")],
-    ids=["empty-response", "timeout"],
+    [None, _status_error("902"), _status_error("900")],
+    ids=["empty-response", "timeout", "json-error"],
 )
 def test_silent_device_remains_unavailable_after_one_wake_retry(
     remote_module, retry_status
