@@ -17,13 +17,13 @@ Tested with Flipper Zero.
 """
 
 try:
-    from . import pulse
-    from . import manchester
+    from . import manchester, pulse
 except ImportError:
-    import pulse
     import manchester
+    import pulse
 
 global_toggle = 0
+
 
 def get_toggle():
     """
@@ -47,6 +47,7 @@ NEC_GAP_0 = 560
 NEC_GAP_1 = 1690
 NEC_MAX_ERROR_PERCENT = 35
 
+
 def nec_decode(values):
     # Decode 32-bit NEC
     data = pulse.distance_decode(values, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1, 32, max_error_percent=NEC_MAX_ERROR_PERCENT)
@@ -55,6 +56,7 @@ def nec_decode(values):
     addr = data[0]
     cmd = data[2]
     return f"addr=0x{addr:02X},cmd=0x{cmd:02X}"
+
 
 def nec_encode(addr, cmd):
     # Encode 32-bit NEC
@@ -66,12 +68,14 @@ def nec_encode(addr, cmd):
     data = [addr & 0xFF, addr ^ 0xFF, cmd & 0xFF, cmd ^ 0xFF]
     return pulse.distance_encode(data, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1)
 
+
 def nec_ext_decode(values):
     # Decode 32-bit NEC (extended)
     data = pulse.distance_decode(values, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1, 32, max_error_percent=NEC_MAX_ERROR_PERCENT)
     addr = data[0] | (data[1] << 8)
     cmd = data[2] | (data[3] << 8)
     return f"addr=0x{addr:04X},cmd=0x{cmd:04X}"
+
 
 def nec_ext_encode(addr, cmd):
     # Encode 32-bit NEC
@@ -81,6 +85,7 @@ def nec_ext_encode(addr, cmd):
         raise ValueError("Command must be in range 0x0000-0xFFFF")
     data = [addr & 0xFF, addr >> 8, cmd & 0xFF, cmd >> 8]
     return pulse.distance_encode(data, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1)
+
 
 def nec42_decode(pulses):
     # Decode 42-bit NEC (NEC42)
@@ -121,6 +126,7 @@ def nec42_decode(pulses):
     # Standard NEC42
     return f"addr=0x{address:04X},cmd=0x{command:04X}"
 
+
 def nec42_encode(addr, cmd):
     # Encode into a 42-bit NEC42 signal
     # Standard NEC42:
@@ -151,6 +157,7 @@ def nec42_encode(addr, cmd):
         values.append(byte_val)
 
     return pulse.distance_encode(values, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1, bit_length=42)
+
 
 # NEC42 Extended
 def nec42_ext_decode(pulses):
@@ -183,6 +190,7 @@ def nec42_ext_decode(pulses):
     full_command = command | (command_inverse << 8)
     return f"addr=0x{full_address:04X},cmd=0x{full_command:04X}"
 
+
 def nec42_ext_encode(addr, cmd):
     # Encode into a extended 42-bit NEC42 signal
     # Extended NEC42:
@@ -210,7 +218,7 @@ def nec42_ext_encode(addr, cmd):
     # Convert 42 bits into bytes
     values = []
     for i in range(6):
-        byte_val = (full_bits >> (8*i)) & 0xFF
+        byte_val = (full_bits >> (8 * i)) & 0xFF
         values.append(byte_val)
 
     return pulse.distance_encode(values, NEC_LEADING_PULSE, NEC_LEADING_GAP, NEC_PULSE, NEC_GAP_0, NEC_GAP_1, bit_length=42)
@@ -223,6 +231,7 @@ SAMSUNG_PULSE = 550
 SAMSUNG_GAP_0 = 550
 SAMSUNG_GAP_1 = 1650
 
+
 def samsung32_decode(pulsts):
     # Decode 32-bit Samsung
     data = pulse.distance_decode(pulsts, SAMSUNG_LEADING_PULSE, SAMSUNG_LEADING_GAP, SAMSUNG_PULSE, SAMSUNG_GAP_0, SAMSUNG_GAP_1, 32)
@@ -231,6 +240,7 @@ def samsung32_decode(pulsts):
     if data[2] != (data[3] ^ 0xFF):
         raise ValueError("Invalid data")
     return f"addr=0x{data[0]:02X},cmd=0x{data[2]:02X}"
+
 
 def samsung32_encode(addr, cmd):
     # Encode Samsung format
@@ -247,6 +257,7 @@ def samsung32_encode(addr, cmd):
 RC6_T = 444
 RC6_START = [True] * 6 + [False] * 2
 
+
 def rc6_decode(values):
     # Decode RC6
     data = manchester.decode(values, RC6_T, 21, RC6_START, phase=True, double_bits=[4], msb_first=True)
@@ -260,6 +271,7 @@ def rc6_decode(values):
     addr = (data[0] & 0b111) << 5 | (data[1] >> 3)
     cmd = ((data[1] & 0b111) << 5) | (data[2] >> 3)
     return f"addr=0x{addr:02X},cmd=0x{cmd:02X}"
+
 
 def rc6_encode(addr, cmd, toggle=None):
     # Encode RC6
@@ -279,6 +291,7 @@ def rc6_encode(addr, cmd, toggle=None):
 RC5_T = 888
 RC5_START = [True]
 
+
 def rc5_decode(values):
     # Decode RC5
     data = manchester.decode(values, RC5_T, 13, RC5_START, phase=False, msb_first=True)
@@ -289,6 +302,7 @@ def rc5_decode(values):
         # RC5X
         cmd |= 0x40
     return f"addr=0x{addr:02X},cmd=0x{cmd:02X}"
+
 
 def rc5_encode(addr, cmd, toggle=None):
     # Encode RC5
@@ -324,6 +338,7 @@ SIRC_DEFAULT_REP = 3
 # Hard cap on rep to avoid extremely long transmissions from typos/misuse.
 SIRC_MAX_REP = 16
 
+
 def _sirc_build_frame(data, bit_length):
     # Encode a single SIRC frame using width modulation. width_encode returns
     # 2 + 2*bit_length elements ending with a trailing 600μs gap.
@@ -331,6 +346,7 @@ def _sirc_build_frame(data, bit_length):
         data, SIRC_LEADING_PULSE, SIRC_LEADING_GAP, SIRC_GAP,
         SIRC_PULSE_0, SIRC_PULSE_1, bit_length,
     )
+
 
 def _sirc_repeat(frame, repeats):
     # Build the multi-frame SIRC transmission. A real Sony remote merges the
@@ -353,6 +369,7 @@ def _sirc_repeat(frame, repeats):
         if i != repeats - 1:
             out.append(inter_gap)
     return out
+
 
 def _sirc_decode_with_rep(values, bit_length):
     """Decode a SIRC stream and detect how many copies of the same frame are
@@ -393,18 +410,21 @@ def _sirc_decode_with_rep(values, bit_length):
         pos += full_frame_size
     return first, rep
 
+
 def _format_sirc_result(addr_str, cmd, rep):
     base = f"addr={addr_str},cmd=0x{cmd:02X}"
     if rep > 1:
         return f"{base},rep={rep}"
     return base
 
+
 def sirc_decode(values):
     # Decode Sony SIRC (12-bit = 5-bit address + 7-bit command)
     data, rep = _sirc_decode_with_rep(values, 12)
     cmd = data[0] & 0b1111111
-    addr = ((data[1] & 0b1111)) << 1 | (data[0] >> 7)
+    addr = (data[1] & 0b1111) << 1 | (data[0] >> 7)
     return _format_sirc_result(f"0x{addr:02X}", cmd, rep)
+
 
 def sirc_encode(addr, cmd, rep=SIRC_DEFAULT_REP):
     # Encode Sony SIRC (12-bit = 5-bit address + 7-bit command)
@@ -415,12 +435,14 @@ def sirc_encode(addr, cmd, rep=SIRC_DEFAULT_REP):
     data = [(cmd & 0b1111111) | ((addr & 1) << 7), (addr >> 1) & 0b1111]
     return _sirc_repeat(_sirc_build_frame(data, 12), rep)
 
+
 def sirc15_decode(values):
     # Decode Sony SIRC (15-bit = 8-bit address + 7-bit command)
     data, rep = _sirc_decode_with_rep(values, 15)
     cmd = data[0] & 0b1111111
     addr = (data[1] << 1) | (data[0] >> 7)
     return _format_sirc_result(f"0x{addr:02X}", cmd, rep)
+
 
 def sirc15_encode(addr, cmd, rep=SIRC_DEFAULT_REP):
     # Encode Sony SIRC (15-bit = 8-bit address + 7-bit command)
@@ -431,12 +453,14 @@ def sirc15_encode(addr, cmd, rep=SIRC_DEFAULT_REP):
     data = [(cmd & 0b1111111) | ((addr & 1) << 7), (addr >> 1)]
     return _sirc_repeat(_sirc_build_frame(data, 15), rep)
 
+
 def sirc20_decode(values):
     # Decode Sony SIRC (20-bit = 13-bit address + 7-bit command)
     data, rep = _sirc_decode_with_rep(values, 20)
     cmd = data[0] & 0b1111111
     addr = (data[2] << 9) | (data[1] << 1) | (data[0] >> 7)
     return _format_sirc_result(f"0x{addr:04X}", cmd, rep)
+
 
 def sirc20_encode(addr, cmd, rep=SIRC_DEFAULT_REP):
     # Encode Sony SIRC (20-bit = 13-bit address + 7-bit command)
@@ -467,6 +491,7 @@ KASEIKYO_PULSE = KASEIKYO_UNIT
 KASEIKYO_GAP_0 = KASEIKYO_UNIT
 KASEIKYO_GAP_1 = KASEIKYO_UNIT * 3
 
+
 def kaseikyo_decode(values):
     # Decode Kaseikyo
     data = pulse.distance_decode(values, KASEIKYO_LEADING_PULSE, KASEIKYO_LEADING_GAP, KASEIKYO_PULSE, KASEIKYO_GAP_0, KASEIKYO_GAP_1, 48)
@@ -486,6 +511,7 @@ def kaseikyo_decode(values):
         raise ValueError("Invalid Kaseikyo parity data")
 
     return f"vendor_id=0x{vendor_id:04X},genre1=0x{genre1:01X},genre2=0x{genre2:01X},data=0x{data_value:04X},id=0x{id_value:01X}"
+
 
 def kaseikyo_encode(vendor_id, genre1, genre2, data, id):
     # Encode Kaseikyo
@@ -520,12 +546,14 @@ RCA_PULSE = 500
 RCA_GAP_0 = 1000
 RCA_GAP_1 = 2000
 
+
 def rca_decode(values):
     # Decode RCA
     data = pulse.distance_decode(values, RCA_LEADING_PULSE, RCA_LEADING_GAP, RCA_PULSE, RCA_GAP_0, RCA_GAP_1, 12)
     addr = data[0] & 0b1111
     cmd = (data[0] >> 4 & 0b1111) | ((data[1] & 0b1111) << 4)
     return f"addr=0x{addr:02X},cmd=0x{cmd:02X}"
+
 
 def rca_encode(addr, cmd):
     # Encode RCA
@@ -545,6 +573,7 @@ PIONEER_PULSE = 500
 PIONEER_GAP_0 = 500
 PIONEER_GAP_1 = 1500
 
+
 def pioneer_decode(values):
     # Decode Pioneer
     data = pulse.distance_decode(values, PIONEER_LEADING_PULSE, PIONEER_LEADING_GAP, PIONEER_PULSE, PIONEER_GAP_0, PIONEER_GAP_1, 32)
@@ -553,6 +582,7 @@ def pioneer_decode(values):
     addr = data[0]
     cmd = data[1]
     return f"addr=0x{addr:02X},cmd=0x{cmd:02X}"
+
 
 def pioneer_encode(addr, cmd):
     # Encode Pioneer
@@ -577,9 +607,11 @@ AC_PULSE = 560
 AC_GAP_0 = 560
 AC_GAP_1 = 1690
 
+
 def air_conditioner_decode(values):
     if len(values) < 100:
         raise ValueError("Invalid AC data: too short")
+
     def ac_decode_half(values):
         data = pulse.distance_decode(values, AC_LEADING_PULSE, AC_LEADING_GAP, AC_PULSE, AC_GAP_0, AC_GAP_1, 48)
         if data[0] != data[1] ^ 0xFF or data[2] != data[3] ^ 0xFF or data[4] != data[5] ^ 0xFF:
@@ -603,6 +635,7 @@ def air_conditioner_decode(values):
     if closing != NEC_GAP_0:
         result += f",closing={closing}"
     return result
+
 
 def air_conditioner_encode(addr, cmd, double=0, closing=NEC_GAP_0):
     if not (0x00 <= addr <= 0xFF):
@@ -679,7 +712,7 @@ MIDEA_HALF_LEN = 99      # 1 leading_pulse + 1 leading_gap + 48*2 bit ticks + 1 
 # - led:   special-vendor (0xB5) command. Toggles the indoor unit's
 #          display panel and confirmation beep.
 MIDEA_BUTTONS = {
-    "swing": (MIDEA_VENDOR_MSB,         0x6B, 0xE0),
+    "swing": (MIDEA_VENDOR_MSB, 0x6B, 0xE0),
     "turbo": (MIDEA_SPECIAL_VENDOR_MSB, 0xF5, 0xA2),
     "led":   (MIDEA_SPECIAL_VENDOR_MSB, 0xF5, 0xA5),
 }
@@ -756,6 +789,7 @@ MIDEA_OFF_B = 0xE0
 # state frame whenever the user pressed the Sleep button on the remote.
 MIDEA_SLEEP_PA = 0xE0
 MIDEA_SLEEP_PB = 0x03
+
 
 def midea_decode(values):
     """Decode a 48-bit Midea AC packet (with one repetition).
@@ -851,6 +885,7 @@ def midea_decode(values):
         _, pa, pb = packets[0]
         return f"a=0x{a:02X},b=0x{b:02X},pa=0x{pa:02X},pb=0x{pb:02X}"
     return f"a=0x{a:02X},b=0x{b:02X}"
+
 
 def _midea_normalize_bool(value, name):
     """Coerce on/off/1/0/true/false (str/int/bool) into bool."""
@@ -1017,6 +1052,7 @@ def _midea_pack(a, b, vendor=MIDEA_VENDOR_MSB):
         48, msb_first=True,
     )
 
+
 def midea_encode(a=None, b=None, pa=None, pb=None,
                  mode=None, temp=None, fan=None, power=None, sleep=None,
                  button=None):
@@ -1079,13 +1115,12 @@ def midea_encode(a=None, b=None, pa=None, pb=None,
     if (pa is None) != (pb is None):
         raise ValueError("Midea: 'pa' and 'pb' must be provided together")
 
-    if sleep is not None:
-        if _midea_normalize_bool(sleep, "sleep"):
-            if pa is not None or pb is not None:
-                raise ValueError(
-                    "Midea: cannot use both `sleep=on` and explicit pa/pb"
-                )
-            pa, pb = MIDEA_SLEEP_PA, MIDEA_SLEEP_PB
+    if sleep is not None and _midea_normalize_bool(sleep, "sleep"):
+        if pa is not None or pb is not None:
+            raise ValueError(
+                "Midea: cannot use both `sleep=on` and explicit pa/pb"
+            )
+        pa, pb = MIDEA_SLEEP_PA, MIDEA_SLEEP_PB
 
     cmd_packet = _midea_pack(a, b)
 
@@ -1126,6 +1161,7 @@ RC_CONVERTERS = {
     "ac": (air_conditioner_encode, air_conditioner_decode),
 }
 
+
 def rc_auto_decode(values, force_raw=False):
     """
     Attempt to decode a list of pulse and gap durations using various decoders.
@@ -1154,6 +1190,7 @@ def rc_auto_decode(values, force_raw=False):
         # Must be odd
         values = values[:-1]
     return "raw:" + ",".join(str(int(v)) for v in values)
+
 
 def rc_auto_encode(s):
     """

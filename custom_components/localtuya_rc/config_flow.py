@@ -1,25 +1,26 @@
 """Config flow for the LocalTuyaIR Remote Control integration."""
 
 import logging
-import voluptuous as vol
+
+import homeassistant.helpers.config_validation as cv
 import tinytuya
-from tinytuya import Contrib, Cloud
+import voluptuous as vol
+from homeassistant import config_entries
+from homeassistant.const import (
+    CONF_CLIENT_ID,
+    CONF_CLIENT_SECRET,
+    CONF_DEVICE_ID,
+    CONF_HOST,
+    CONF_NAME,
+    CONF_REGION,
+)
+from homeassistant.core import callback
+from tinytuya import Cloud, Contrib
 
 from .const import *
 
-from homeassistant import config_entries
-from homeassistant.core import callback
-import homeassistant.helpers.config_validation as cv
-from homeassistant.const import (
-    CONF_NAME,
-    CONF_HOST,
-    CONF_DEVICE_ID,
-    CONF_REGION,
-    CONF_CLIENT_ID,
-    CONF_CLIENT_SECRET
-)
-
 _LOGGER = logging.getLogger(__name__)
+
 
 class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for LocalTuyaIR Remote Control."""
@@ -107,11 +108,10 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_menu(
                 step_id="ip_method",
                 menu_options=["pre_scan", "ask_ip"])
-        else:
-            return self.async_show_menu(
-                step_id="ip_method",
-                menu_options=["pre_scan", "config"])
-        
+        return self.async_show_menu(
+            step_id="ip_method",
+            menu_options=["pre_scan", "config"])
+
     async def async_step_ask_ip(self, user_input=None, errors={}):
         """Ask user to enter the IP manually."""
         if user_input is not None:
@@ -297,7 +297,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             elif not device.control_type:
                 errors["base"] = "no_control_type"
-                _LOGGER.error(f"Device test error: control type not detected")
+                _LOGGER.error("Device test error: control type not detected")
             elif self.config[CONF_DEVICE_ID] in self._async_current_ids():
                 return self.async_abort(reason="already_configured")
             else:
@@ -305,7 +305,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self.config[CONF_PROTOCOL_VERSION] = version_ok
                 self.config[CONF_CONTROL_TYPE] = device.control_type
                 if self.cloud and 'key' in self.cloud_info:
-                    del self.cloud_info['key'] # to protect the key
+                    del self.cloud_info['key']  # to protect the key
                 self.config[CONF_CLOUD_INFO] = self.cloud_info if self.cloud else None
                 _LOGGER.debug("Config: %s", self.config)
                 await self.async_set_unique_id(self.config[CONF_DEVICE_ID])
@@ -332,7 +332,6 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             data_schema=schema
         )
-
 
     async def async_step_reconfigure(self, user_input=None):
         """Handle reconfiguration of the device (e.g. IP change)."""
@@ -446,7 +445,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class LocalTuyaIROptionsFlow(config_entries.OptionsFlow):
     """Options flow for LocalTuyaIR Remote Control."""
-    
+
     def __init__(self, entry):
         """Initialize the options flow."""
         self.entry = entry

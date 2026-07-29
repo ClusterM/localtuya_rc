@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 REMOTE_PATH = ROOT / "custom_components" / "localtuya_rc" / "remote.py"
 MANIFEST_PATH = ROOT / "custom_components" / "localtuya_rc" / "manifest.json"
