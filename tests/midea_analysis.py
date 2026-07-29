@@ -14,7 +14,6 @@ and to figure out the field layout.
 """
 
 import importlib.util
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,7 +112,7 @@ def analyze(name, raw_str):
         print(f"!! Half 2 decode failed: {e}")
         bytes2 = None
 
-    print(f"\nWire-LSB bytes (as flipper_rc reads them):")
+    print("\nWire-LSB bytes (as flipper_rc reads them):")
     print(f"  Half 1: {[f'0x{b:02X}' for b in bytes1]}")
     if bytes2 is not None:
         print(f"  Half 2: {[f'0x{b:02X}' for b in bytes2]}")
@@ -122,12 +121,12 @@ def analyze(name, raw_str):
 
     # Convert to MSB-first to align with IRremoteESP8266 / Midea spec docs.
     msb = [byte_lsb_to_msb(b) for b in bytes1]
-    print(f"\nMSB-first bytes (Midea spec convention):")
+    print("\nMSB-first bytes (Midea spec convention):")
     for i, b in enumerate(msb):
         print(f"  B{i}: 0x{b:02X}  ({fmt_bits_msb(b)})")
 
     # Validate Midea invariants
-    print(f"\nMidea invariants:")
+    print("\nMidea invariants:")
     print(f"  B0 == 0xB2 (Midea AC marker, MSB):  {msb[0] == 0xB2}  (got 0x{msb[0]:02X})")
     print(f"  B1 == ~B0 (LSB):  {bytes1[0] == bytes1[1] ^ 0xFF}")
     print(f"  B3 == ~B2 (LSB):  {bytes1[2] == bytes1[3] ^ 0xFF}")

@@ -1,5 +1,6 @@
 MAX_ERROR_PERCENT = 25
 
+
 def in_range(value, target, max_error_percent=MAX_ERROR_PERCENT):
     """
     Checks if a given value is within a certain percentage range of a target value.
@@ -14,6 +15,7 @@ def in_range(value, target, max_error_percent=MAX_ERROR_PERCENT):
     # Checks if value is within MAX_ERROR_PERCENT% of target
     max_error = max_error_percent / 100
     return target * (1 - max_error) <= value <= target * (1 + max_error)
+
 
 def distance_decode(pulses, leading_pulse, leading_gap, pulse, gap_0, gap_1, bit_length, msb_first=False, max_error_percent=MAX_ERROR_PERCENT):
     """
@@ -59,14 +61,15 @@ def distance_decode(pulses, leading_pulse, leading_gap, pulse, gap_0, gap_1, bit
                 raise ValueError(f"Invalid gap length: {v}")
             v = long_pulse_v if v > (gap_0 + gap_1) / 2 else short_pulse_v
             if msb_first:
-                i |= (1 if v else 0) << (7 - bit) # MSB
+                i |= (1 if v else 0) << (7 - bit)  # MSB
             else:
-                i |= (1 if v else 0) << bit # LSB
+                i |= (1 if v else 0) << bit  # LSB
             decoded += 1
             if decoded == bit_length:
                 break
         data.append(i)
     return data
+
 
 def width_decode(pulses, leading_pulse, leading_gap, gap, pulse_0, pulse_1, bit_length, msb_first=False):
     """
@@ -92,7 +95,7 @@ def width_decode(pulses, leading_pulse, leading_gap, gap, pulse_0, pulse_1, bit_
         raise ValueError(f"Invalid leading gap length: {pulses[1]}")
     if len(pulses) < 2 + bit_length * 2:
         raise ValueError(f"Invalid data length: {len(pulses)} (must be at least {2 + bit_length * 2})")
-    
+
     long_pulse_v = True if pulse_1 > pulse_0 else False
     short_pulse_v = not long_pulse_v
     decoded = 0
@@ -107,9 +110,9 @@ def width_decode(pulses, leading_pulse, leading_gap, gap, pulse_0, pulse_1, bit_
                 raise ValueError(f"Invalid pulse length: {v}")
             v = long_pulse_v if v > (pulse_0 + pulse_1) / 2 else short_pulse_v
             if msb_first:
-                i |= (1 if v else 0) << (7 - bit) # MSB
+                i |= (1 if v else 0) << (7 - bit)  # MSB
             else:
-                i |= (1 if v else 0) << bit # LSB
+                i |= (1 if v else 0) << bit  # LSB
             decoded += 1
             if decoded == bit_length:
                 break
@@ -117,6 +120,7 @@ def width_decode(pulses, leading_pulse, leading_gap, gap, pulse_0, pulse_1, bit_
                 raise ValueError(f"Invalid gap length: {pulses[p + 1]}")
         data.append(i)
     return data
+
 
 def distance_encode(values, leading_pulse, leading_gap, pulse, gap_0, gap_1, bit_length=None, msb_first=False):
     """
@@ -159,6 +163,7 @@ def distance_encode(values, leading_pulse, leading_gap, pulse, gap_0, gap_1, bit
             break
     pulses.append(pulse)
     return pulses
+
 
 def width_encode(values, leading_pulse, leading_gap, gap, pulse_0, pulse_1, bit_length=None, msb_first=False):
     """

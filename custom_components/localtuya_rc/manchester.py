@@ -38,7 +38,7 @@ def decode(values, T, bit_length, start_sequence, phase, double_bits=[], msb_fir
 
     if len(bits) < bit_length * 2:
         raise ValueError(f"Invalid data length: {len(bits)} (must be at least {bit_length * 2})")
-    
+
     if phase:
         bits = [not bits[i] for i in range(len(bits))]
 
@@ -59,6 +59,7 @@ def decode(values, T, bit_length, start_sequence, phase, double_bits=[], msb_fir
                 break
         data.append(i)
     return data
+
 
 def encode(values, T, bit_length, start_sequence, phase, double_bits=[], msb_first=True):
     """

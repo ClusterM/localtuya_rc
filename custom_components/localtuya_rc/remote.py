@@ -1,51 +1,50 @@
 """Support for Tuya IR Remote Control."""
-import logging
 import asyncio
+import logging
 import struct
-import voluptuous as vol
-import homeassistant.helpers.config_validation as cv
-from tinytuya import Contrib, ERR_JSON, ERR_TIMEOUT
-from tinytuya.Contrib import RFRemoteControlDevice
 import threading
 
-from .const import (
-    DOMAIN,
-    DEFAULT_FRIENDLY_NAME,
-    CONF_LOCAL_KEY,
-    CONF_PROTOCOL_VERSION,
-    CONF_CONTROL_TYPE,
-    CONF_CLOUD_INFO,
-    CONF_PERSISTENT_CONNECTION,
-    CODE_STORAGE_VERSION,
-    CODE_STORAGE_CODES,
-    NOTIFICATION_TITLE,
-    DEFAULT_PERSISTENT_CONNECTION
-)
-
-from homeassistant.const import (
-    CONF_NAME,
-    CONF_HOST,
-    CONF_DEVICE_ID,
-)
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.exceptions import HomeAssistantError
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant.components.persistent_notification import async_create
 from homeassistant.components.remote import (
-    ATTR_COMMAND_TYPE,
-    ATTR_TIMEOUT,
     ATTR_ALTERNATIVE,
     ATTR_COMMAND,
-    ATTR_DEVICE,
+    ATTR_COMMAND_TYPE,
     ATTR_DELAY_SECS,
-    ATTR_NUM_REPEATS,
+    ATTR_DEVICE,
     ATTR_HOLD_SECS,
+    ATTR_NUM_REPEATS,
+    ATTR_TIMEOUT,
     PLATFORM_SCHEMA,
     RemoteEntity,
     RemoteEntityFeature,
 )
+from homeassistant.const import (
+    CONF_DEVICE_ID,
+    CONF_HOST,
+    CONF_NAME,
+)
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.storage import Store
+from tinytuya import ERR_JSON, ERR_TIMEOUT, Contrib
+from tinytuya.Contrib import RFRemoteControlDevice
 
-from .rc_encoder import rc_auto_encode, rc_auto_decode
+from .const import (
+    CODE_STORAGE_CODES,
+    CODE_STORAGE_VERSION,
+    CONF_CLOUD_INFO,
+    CONF_CONTROL_TYPE,
+    CONF_LOCAL_KEY,
+    CONF_PERSISTENT_CONNECTION,
+    CONF_PROTOCOL_VERSION,
+    DEFAULT_FRIENDLY_NAME,
+    DEFAULT_PERSISTENT_CONNECTION,
+    DOMAIN,
+    NOTIFICATION_TITLE,
+)
+from .rc_encoder import rc_auto_decode, rc_auto_encode
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -77,7 +76,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     if config == None:
         _LOGGER.error("Configuration is empty")
         return
-    
+
     name = config.get(CONF_NAME, DEFAULT_FRIENDLY_NAME)
     dev_id = config.get(CONF_DEVICE_ID)
     host = config.get(CONF_HOST)
@@ -119,7 +118,7 @@ class TuyaRC(RemoteEntity):
         self._cloud_info = cloud_info
         self._control_type = control_type or 0
         self._entry = entry
-        
+
         self._storage = None
         self._codes = {}
         self._available = False
@@ -278,7 +277,7 @@ class TuyaRC(RemoteEntity):
             except Exception as e:
                 _LOGGER.error("Failed to receive button, exception %s: %s", type(e), e, exc_info=True)
                 raise HomeAssistantError("tinytuya library internal error, please check the logs.")
-    
+
     def _send_button(self, pulses):
         with self._lock:
             try:
@@ -302,7 +301,7 @@ class TuyaRC(RemoteEntity):
             except Exception as e:
                 self._deinit()
                 raise e
-    
+
     def _receive_button_rf(self, timeout):
         with self._lock:
             try:
@@ -320,7 +319,7 @@ class TuyaRC(RemoteEntity):
             except Exception as e:
                 self._deinit()
                 raise e
-    
+
     def _send_button_rf(self, base64):
         with self._lock:
             try:
@@ -382,7 +381,7 @@ class TuyaRC(RemoteEntity):
                 )
                 self._device.study_end()
                 status = self._device.status()
-            _LOGGER.debug(f"Device status: {status}")
+            _LOGGER.debug("Device status: %s", status)
             self._available = bool(status) and "Error" not in status
             if not self._available:
                 _LOGGER.error("Device is not available, status: %s", status)
@@ -421,22 +420,22 @@ class TuyaRC(RemoteEntity):
 
     async def async_send_command(self, command, **kwargs):
         """Send a list of commands to a device."""
-        device = kwargs.get(ATTR_DEVICE, None)
+        device = kwargs.get(ATTR_DEVICE)
         repeat = kwargs.get(ATTR_NUM_REPEATS, 1)
         repeat_delay = kwargs.get(ATTR_DELAY_SECS, 0)
         hold = kwargs.get(ATTR_HOLD_SECS, 0)
-        
+
         if hold != 0:
             raise NotImplementedError("Hold time is not supported.")
-        
+
         try:
             await self._async_load_storage_files()
             for n in range(repeat):
                 for cmd in command:
                     if device:
-                        if not device in self._codes:
+                        if device not in self._codes:
                             raise KeyError(f"Device '{device}' not found in the codes storage.")
-                        if not cmd in self._codes[device]:
+                        if cmd not in self._codes[device]:
                             raise KeyError(f"Command '{cmd}' not found in the codes storage for device '{device}'.")
                         code = self._codes[device][cmd]
                         _LOGGER.debug("Sending command '%s' for device '%s', code: %s", cmd, device, code)
@@ -457,10 +456,10 @@ class TuyaRC(RemoteEntity):
 
     async def async_learn_command(self, **kwargs):
         """Learn a command to a device, or just show the received command code."""
-        device = kwargs.get(ATTR_DEVICE, None)
+        device = kwargs.get(ATTR_DEVICE)
         commands = kwargs.get(ATTR_COMMAND, [])
         command_type = kwargs.get(ATTR_COMMAND_TYPE, "ir")
-        alternative = kwargs.get(ATTR_ALTERNATIVE, None)
+        alternative = kwargs.get(ATTR_ALTERNATIVE)
         timeout = kwargs.get(ATTR_TIMEOUT, 10)
 
         if len(commands) != 1:
@@ -468,7 +467,7 @@ class TuyaRC(RemoteEntity):
 
         command = commands[0]
         notification_id = "learn_command_" + self._dev_id + "_" + str(device) + "_" + command
-        
+
         try:
             if not command: raise ValueError("You need to specify a command name to learn.")
             if command_type != "ir" and command_type != "rf": raise NotImplementedError(f'Unknown command type "{command_type}", only "ir" and "rf" is supported.')
@@ -481,8 +480,8 @@ class TuyaRC(RemoteEntity):
                 title=NOTIFICATION_TITLE,
                 notification_id=notification_id,
             )
-            
-            _LOGGER.debug(f"Waiting for button press...")
+
+            _LOGGER.debug("Waiting for button press...")
             if command_type == "ir":
                 button = await self.hass.async_add_executor_job(self._receive_button, timeout)
             elif command_type == "rf":
@@ -501,7 +500,7 @@ class TuyaRC(RemoteEntity):
                 _LOGGER.warning("Did not receive a button code before timeout, last response: %r", button)
                 self._deinit()
                 raise ValueError("The device did not report a button code in time. Please try again: hold the remote closer, press the button firmly for ~1 second, or increase the learn timeout.")
-            
+
             if command_type == "ir":
                 pulses = Contrib.IRRemoteControlDevice.base64_to_pulses(button)
                 if len(pulses) < 4:
@@ -516,12 +515,12 @@ class TuyaRC(RemoteEntity):
                 decoded_raw = "rfraw:" + button
                 direct_code_example = f'<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded}</pre>'
                 direct_code_example_raw = f'If code above is not working, you can try to use the raw code:\n<pre>service: remote.send_command\ntarget:\n  entity_id: {self.entity_id}\ndata:\n  command: {decoded_raw}</pre>But <a href="https://github.com/ClusterM/localtuya_rc/issues">create a bug report</a> in such case, please.'
-            
+
             if device:
                 await self._async_load_storage_files()
                 self._codes.setdefault(device, {}).update({command: decoded})
                 await self._storage.async_save(self._codes)
-                self.schedule_update_ha_state() # Update device attributes
+                self.schedule_update_ha_state()  # Update device attributes
                 msg = f'Successfully learned command "<b>{command}</b>" for device "<b>{device}</b>", code:\r\n<pre>{decoded}</pre>' + \
                     (f"Raw code:<pre>{decoded_raw}</pre>" if not decoded.startswith("raw:") else "") + \
                     "\n\nNow you can use this device identifier and command name in your automations and scripts with the 'remote.send_command' service. Example:" + \
@@ -535,7 +534,7 @@ class TuyaRC(RemoteEntity):
                     "\n\nNow you can use this code in your automations and scripts with the 'remote.send_command' service. Example:" + \
                     direct_code_example + \
                     (f"\n\n{direct_code_example_raw}" if not decoded.startswith("raw:") else "")
-                
+
             if decoded.startswith("raw:"):
                 msg += "\r\n\r\n<b>Warning</b>: this command is learned in raw format, e.g. it can't be decoded using known protocol decoders. It's better to try to learn the command again but it's ok if you keep seeing this message."
 
@@ -557,15 +556,15 @@ class TuyaRC(RemoteEntity):
 
     async def async_delete_command(self, **kwargs):
         """Delete a command from a device."""
-        device = kwargs.get(ATTR_DEVICE, None)
+        device = kwargs.get(ATTR_DEVICE)
         commands = kwargs.get(ATTR_COMMAND, [])
-        
+
         if not device:
             raise HomeAssistantError("You need to specify a device.")
 
         await self._async_load_storage_files()
 
-        if not device in self._codes:
+        if device not in self._codes:
             raise HomeAssistantError(f"Device '{device}' not found in the codes storage.")
 
         deleted = False

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 PKG_DIR = ROOT / "custom_components" / "localtuya_rc"
 
@@ -197,8 +196,8 @@ def test_auto_encode_round_trip():
 @pytest.mark.parametrize("mode,temp,fan,expected_a,expected_b", [
     # Cool mode, all fans, temp 22
     ("cool", 22, "auto", 0xBF, 0x70),
-    ("cool", 22, "low",  0x9F, 0x70),
-    ("cool", 22, "med",  0x5F, 0x70),
+    ("cool", 22, "low", 0x9F, 0x70),
+    ("cool", 22, "med", 0x5F, 0x70),
     ("cool", 22, "high", 0x3F, 0x70),
     # Cool mode, temp variations
     ("cool", 26, "auto", 0xBF, 0xD0),
@@ -210,9 +209,9 @@ def test_auto_encode_round_trip():
     # Heat 25 — temp Gray code 0xC, mode 0b11
     ("heat", 25, "auto", 0xBF, 0xCC),
     # Dry mode (fan locked to AC-controlled, like auto)
-    ("dry",  24, "auto", 0x1F, 0x44),
+    ("dry", 24, "auto", 0x1F, 0x44),
     # Fan mode (temp ignored, sentinel 0xE)
-    ("fan",  None, "auto", 0xBF, 0xE4),
+    ("fan", None, "auto", 0xBF, 0xE4),
 ])
 def test_fields_to_bytes_matches_real_captures(mode, temp, fan, expected_a, expected_b):
     a, b = rc_encoder._midea_fields_to_bytes(mode=mode, temp=temp, fan=fan)
@@ -349,7 +348,7 @@ def test_rc_auto_encode_sleep_string():
 @pytest.mark.parametrize("button,vendor,a,b", [
     ("swing", 0xB2, 0x6B, 0xE0),
     ("turbo", 0xB5, 0xF5, 0xA2),
-    ("led",   0xB5, 0xF5, 0xA5),
+    ("led", 0xB5, 0xF5, 0xA5),
 ])
 def test_button_encode_round_trip(button, vendor, a, b):
     """Each named button encodes to a 199-element signal whose payload
