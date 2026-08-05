@@ -256,8 +256,22 @@ class TuyaRC(RemoteEntity):
     def supported_features(self):
         return RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
 
+    async def async_added_to_hass(self):
+        """Publish this entity into hass.data for infrared.py to find.
+
+        Only fires after a successful add, so a disabled entity (which never
+        reaches this hook) correctly leaves nothing for infrared.py to bind to.
+        """
+        await super().async_added_to_hass()
+        if self._entry is not None:
+            self.hass.data.setdefault(DOMAIN, {}).setdefault(self._entry.entry_id, {})["remote_entity"] = self
+
     async def async_will_remove_from_hass(self):
         _LOGGER.debug("Removing device %s from Home Assistant...", self._dev_id)
+        if self._entry is not None:
+            entry_data = self.hass.data.get(DOMAIN, {}).get(self._entry.entry_id, {})
+            if entry_data.get("remote_entity") is self:
+                del entry_data["remote_entity"]
         self._deinit()
 
     def _receive_button(self, timeout):
