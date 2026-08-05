@@ -419,6 +419,17 @@ class TuyaRC(RemoteEntity):
         await self.hass.async_add_executor_job(self._update_availibility)
         await self._async_load_storage_files()
 
+    async def async_send_ir_pulses(self, pulses):
+        """Send raw IR pulses (unsigned mark/space durations in µs, tinytuya format)
+        through this entity's connection, for infrared.py's emitter entity to reuse."""
+        try:
+            await self.hass.async_add_executor_job(self._send_button, pulses)
+        except HomeAssistantError:
+            raise
+        except Exception as e:
+            _LOGGER.error("Failed to send IR pulses via infrared platform, exception %s: %s", type(e), e, exc_info=True)
+            raise HomeAssistantError(str(e)) from e
+
     async def async_send_command(self, command, **kwargs):
         """Send a list of commands to a device."""
         device = kwargs.get(ATTR_DEVICE, None)
