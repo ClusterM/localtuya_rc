@@ -121,7 +121,7 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             devices = [device for device in self.cloud_devices if device['id'] == id]
             self.config[CONF_NAME] = devices[0]['name']
             self.config[CONF_LOCAL_KEY] = devices[0]['key']
-            self.cloud_info = devices[0] 
+            self.cloud_info = devices[0].copy()
             return await self.async_step_config()
         device_list = [f"{device['name']} ({device['id']})" for device in self.cloud_devices]
         schema = vol.Schema(
