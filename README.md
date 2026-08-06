@@ -153,6 +153,16 @@ data:
 ```
 
 
+### Infrared adapter entity (for LG Infrared, Samsung Infrared, etc.)
+
+On Home Assistant Core 2026.4 and later, this integration also registers an `infrared.*` entity for your Tuya IR hub, implementing Home Assistant's newer [Infrared](https://www.home-assistant.io/integrations/infrared/) building-block platform. This is separate from, and in addition to, the `remote.*` entity described above.
+
+Brand-specific device integrations built on this newer architecture (e.g. "LG Infrared", "Samsung Infrared") ask you to pick "the emitter from your infrared remote adapter" during setup — they only recognize entities from this `infrared` platform, not arbitrary `remote.*` entities. With this integration's `infrared.*` entity, your Tuya IR hub becomes selectable there, so you can use those integrations' brand-specific codes instead of maintaining your own learned-code tables via `remote.learn_command`.
+
+This entity has no services of its own — it's a plumbing entity that other integrations send commands through. Its "last command sent" timestamp updates automatically as those integrations use it, and its availability follows the `remote.*` entity above, since both share the same connection to the device.
+
+On older Home Assistant Core versions (before 2026.4, which introduced this platform), only the `remote.*` entity is created; this is detected automatically and requires no configuration.
+
 ## IR Code Formatting
 
 When defining IR commands for the Tuya IR remote emulator in Home Assistant, each code is represented as a single string. This string encodes the precise details of the IR command you want to send—either as a sequence of low-level raw timing values or by referencing a known IR protocol with corresponding parameters.
