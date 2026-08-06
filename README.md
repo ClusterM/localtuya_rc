@@ -8,6 +8,7 @@ This integration addresses that gap. It provides full local control of Tuya Wi-F
 * Local Control: No external cloud services required. All communication remains within your local network, improving reliability and responsiveness.
 * Flexible IR Control: Seamlessly integrate Wi-Fi-based IR remote emulators from Tuya, enabling you to manage a wide range of IR-controlled devices—such as TVs, air conditioners, and audio systems—directly from Home Assistant.
 
+**Attention! The author no longer actively develops this project, as they no longer use Tuya IR remote controller emulators. Therefore, further development of the project now depends entirely on the community. The author has flashed their Tuya device with ESPHome firmware, and it now works much faster, much more reliably, and no longer uses Tuya’s closed protocol. You are recommended to do the same.**
 
 ## Integration setup
 
