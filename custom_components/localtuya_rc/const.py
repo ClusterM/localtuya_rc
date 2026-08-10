@@ -14,6 +14,7 @@ CONF_PRODUCT_CATEGORY = "product_category"
 CONF_PRODUCT_NAME = "product_name"
 CONF_PRODUCT_ID = "product_id"
 CONF_PERSISTENT_CONNECTION = "persistent_connection"
+CONF_HAS_TEMP_HUMIDITY_SENSOR = "has_temp_humidity_sensor"
 
 DEFAULT_PERSISTENT_CONNECTION = False
 

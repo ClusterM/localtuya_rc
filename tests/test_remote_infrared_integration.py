@@ -125,6 +125,7 @@ def remote_module(monkeypatch):
         CONF_CONTROL_TYPE="control_type",
         CONF_CLOUD_INFO="cloud_info",
         CONF_PERSISTENT_CONNECTION="persistent_connection",
+        CONF_HAS_TEMP_HUMIDITY_SENSOR="has_temp_humidity_sensor",
         CODE_STORAGE_VERSION=1,
         CODE_STORAGE_CODES="localtuya_rc_codes",
         NOTIFICATION_TITLE="Tuya IR Remote Control",

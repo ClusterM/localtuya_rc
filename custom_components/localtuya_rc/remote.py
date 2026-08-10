@@ -16,6 +16,7 @@ from .const import (
     CONF_CONTROL_TYPE,
     CONF_CLOUD_INFO,
     CONF_PERSISTENT_CONNECTION,
+    CONF_HAS_TEMP_HUMIDITY_SENSOR,
     CODE_STORAGE_VERSION,
     CODE_STORAGE_CODES,
     NOTIFICATION_TITLE,
@@ -109,6 +110,13 @@ class TuyaRC(RemoteEntity):
     _CONNECTION_RETRY_DELAY = 0.5
     _CONNECTION_RETRY_LIMIT = 2
 
+    # Standard Tuya DPs reported by IR hubs that bundle a temperature/humidity
+    # sensor (Tuya category "wnykq"), independent of control_type. Not every
+    # hub has this hardware, so these keys are simply absent from status()'s
+    # dps on ones that don't.
+    DP_TEMPERATURE = "101"  # temp_current, tenths of a degree Celsius
+    DP_HUMIDITY = "102"     # humidity_value, percent
+
     def __init__(self, name, dev_id, address, local_key, protocol_version, persistent_connection=DEFAULT_PERSISTENT_CONNECTION, cloud_info=None, control_type=0, entry=None):
         self._name = name
         self._dev_id = dev_id
@@ -119,10 +127,11 @@ class TuyaRC(RemoteEntity):
         self._cloud_info = cloud_info
         self._control_type = control_type or 0
         self._entry = entry
-        
+
         self._storage = None
         self._codes = {}
         self._available = False
+        self._dps = {}
 
         self._device = None
         self._device_RF = None
@@ -207,6 +216,29 @@ class TuyaRC(RemoteEntity):
         hass.loop.call_soon_threadsafe(_do_update)
         _LOGGER.debug("Persisted control_type=%s for %s", control_type, self._dev_id)
 
+    def _persist_has_temp_humidity_sensor(self):
+        """Persist that this device reports a temperature/humidity sensor.
+
+        Mirrors _persist_control_type(): once detected, sensor.py keeps
+        exposing the sensor entities even if a later poll (e.g. right after
+        a reboot) does not include those DPs in its status response yet.
+        """
+        if self.DP_TEMPERATURE not in self._dps or self.DP_HUMIDITY not in self._dps:
+            return
+        if not self._entry or self._entry.data.get(CONF_HAS_TEMP_HUMIDITY_SENSOR):
+            return
+        hass = getattr(self, "hass", None)
+        if hass is None:
+            return
+        new_data = {**self._entry.data, CONF_HAS_TEMP_HUMIDITY_SENSOR: True}
+        entry = self._entry
+
+        def _do_update():
+            hass.config_entries.async_update_entry(entry, data=new_data)
+
+        hass.loop.call_soon_threadsafe(_do_update)
+        _LOGGER.debug("Persisted has_temp_humidity_sensor=True for %s", self._dev_id)
+
     @property
     def available(self):
         return self._available
@@ -250,7 +282,32 @@ class TuyaRC(RemoteEntity):
         if self._device:
             extra['control_type'] = self._device.control_type
         extra['learned_commands'] = str({device: str(list(commands.keys())) for device, commands in self._codes.items()})
+        # Mirrored here (rather than only exposed via the properties below) so
+        # that sensor.py's state-change subscription actually fires when
+        # these values change - see TuyaIRTemperatureSensor/TuyaIRHumiditySensor.
+        if self.temp_humidity_supported:
+            extra['temperature'] = self.temperature
+            extra['humidity'] = self.humidity
         return extra
+
+    @property
+    def temp_humidity_supported(self):
+        """Whether this device reports a temperature/humidity sensor."""
+        if self._entry and self._entry.data.get(CONF_HAS_TEMP_HUMIDITY_SENSOR):
+            return True
+        return self.DP_TEMPERATURE in self._dps and self.DP_HUMIDITY in self._dps
+
+    @property
+    def temperature(self):
+        """Current temperature in Celsius, or None if not reported."""
+        raw = self._dps.get(self.DP_TEMPERATURE)
+        return raw / 10 if isinstance(raw, (int, float)) else None
+
+    @property
+    def humidity(self):
+        """Current relative humidity in percent, or None if not reported."""
+        raw = self._dps.get(self.DP_HUMIDITY)
+        return raw if isinstance(raw, (int, float)) else None
 
     @property
     def supported_features(self):
@@ -398,6 +455,8 @@ class TuyaRC(RemoteEntity):
                 status = self._device.status()
             _LOGGER.debug(f"Device status: {status}")
             self._available = bool(status) and "Error" not in status
+            if self._available and isinstance(status, dict):
+                self._dps.update(status.get("dps") or {})
             if not self._available:
                 _LOGGER.error("Device is not available, status: %s", status)
         except Exception as e:
@@ -421,6 +480,8 @@ class TuyaRC(RemoteEntity):
         if self._available and self._device and self._device.control_type:
             self._control_type = self._device.control_type
             self._persist_control_type(self._control_type)
+        if self._available:
+            self._persist_has_temp_humidity_sensor()
         if not self._available:
             self._deinit()
         _LOGGER.debug("Device %s is available: %s", self._dev_id, self._available)
