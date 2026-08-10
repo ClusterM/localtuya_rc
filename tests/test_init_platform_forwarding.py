@@ -39,7 +39,7 @@ def _load_init_module(monkeypatch, *, has_infrared_platform):
     _install_module(monkeypatch, "homeassistant.core", HomeAssistant=object)
     _install_module(monkeypatch, "homeassistant.config_entries", ConfigEntry=object)
 
-    platform_kwargs = {"REMOTE": "remote"}
+    platform_kwargs = {"REMOTE": "remote", "SENSOR": "sensor"}
     if has_infrared_platform:
         # Real HA's generated Platform enum gains INFRARED in the same
         # release that ships homeassistant.components.infrared.
@@ -118,12 +118,15 @@ def test_infrared_platform_available_false_when_platform_enum_lacks_infrared(mon
 # --- async_setup_entry forwarding ---
 
 
-def test_setup_entry_forwards_remote_then_infrared_separately_and_in_order(monkeypatch):
-    """Two separate awaited calls, not one combined list: infrared.py's
-    async_setup_entry looks up hass.data[...]["remote_entity"], which is
-    only populated once the "remote" platform's entities have actually been
-    added (see TuyaRC.async_added_to_hass in remote.py) - so "remote" must
-    be forwarded and fully finish before "infrared" is forwarded at all."""
+def test_setup_entry_forwards_remote_then_sensor_then_infrared_separately_and_in_order(
+    monkeypatch,
+):
+    """Three separate awaited calls, not one combined list: sensor.py and
+    infrared.py's async_setup_entry both look up hass.data[...]["remote_entity"],
+    which is only populated once the "remote" platform's entities have
+    actually been added (see TuyaRC.async_added_to_hass in remote.py) - so
+    "remote" must be forwarded and fully finish before "sensor" or "infrared"
+    are forwarded at all."""
     module = _load_init_module(monkeypatch, has_infrared_platform=True)
     hass = _FakeHass()
     entry = _FakeEntry()
@@ -132,6 +135,7 @@ def test_setup_entry_forwards_remote_then_infrared_separately_and_in_order(monke
 
     assert hass.config_entries.forward_calls == [
         [module.Platform.REMOTE],
+        [module.Platform.SENSOR],
         ["infrared"],
     ]
 
@@ -148,24 +152,30 @@ def test_setup_entry_survives_a_failed_infrared_forward(monkeypatch):
     assert result is True
     assert hass.config_entries.forward_calls == [
         [module.Platform.REMOTE],
+        [module.Platform.SENSOR],
         ["infrared"],
     ]
 
 
-def test_setup_entry_forwards_only_remote_when_infrared_unavailable(monkeypatch):
+def test_setup_entry_forwards_only_remote_and_sensor_when_infrared_unavailable(
+    monkeypatch,
+):
     module = _load_init_module(monkeypatch, has_infrared_platform=False)
     hass = _FakeHass()
     entry = _FakeEntry()
 
     asyncio.run(module.async_setup_entry(hass, entry))
 
-    assert hass.config_entries.forward_calls == [[module.Platform.REMOTE]]
+    assert hass.config_entries.forward_calls == [
+        [module.Platform.REMOTE],
+        [module.Platform.SENSOR],
+    ]
 
 
 # --- async_unload_entry ---
 
 
-def test_unload_entry_unloads_both_platforms_and_pops_data_on_success(monkeypatch):
+def test_unload_entry_unloads_all_platforms_and_pops_data_on_success(monkeypatch):
     module = _load_init_module(monkeypatch, has_infrared_platform=True)
     hass = _FakeHass(unload_result=True)
     hass.data[module.DOMAIN] = {"entry-1": {"remote_entity": object()}}
@@ -174,18 +184,24 @@ def test_unload_entry_unloads_both_platforms_and_pops_data_on_success(monkeypatc
     result = asyncio.run(module.async_unload_entry(hass, entry))
 
     assert result is True
-    assert hass.config_entries.unload_calls == [[module.Platform.REMOTE, "infrared"]]
+    assert hass.config_entries.unload_calls == [
+        [module.Platform.REMOTE, module.Platform.SENSOR, "infrared"]
+    ]
     assert "entry-1" not in hass.data[module.DOMAIN]
 
 
-def test_unload_entry_only_unloads_remote_when_infrared_unavailable(monkeypatch):
+def test_unload_entry_only_unloads_remote_and_sensor_when_infrared_unavailable(
+    monkeypatch,
+):
     module = _load_init_module(monkeypatch, has_infrared_platform=False)
     hass = _FakeHass(unload_result=True)
     entry = _FakeEntry()
 
     asyncio.run(module.async_unload_entry(hass, entry))
 
-    assert hass.config_entries.unload_calls == [[module.Platform.REMOTE]]
+    assert hass.config_entries.unload_calls == [
+        [module.Platform.REMOTE, module.Platform.SENSOR]
+    ]
 
 
 def test_unload_entry_retains_hass_data_when_unload_fails(monkeypatch):

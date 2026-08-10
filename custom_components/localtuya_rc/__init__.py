@@ -22,9 +22,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Tuya Remote Control from a config entry."""
     _LOGGER.debug("Setting up entry")
 
-    # Must finish before "infrared" below: the emitter entity needs the
-    # remote entity already registered in hass.data.
+    # Must finish before "sensor"/"infrared" below: both need the remote
+    # entity already registered in hass.data.
     await hass.config_entries.async_forward_entry_setups(entry, [Platform.REMOTE])
+
+    # Separate awaited call, not merged into the list above: forwarded
+    # platforms set up concurrently, and sensor.py looks up the remote
+    # entity that the call above just finished registering.
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
 
     if INFRARED_PLATFORM_AVAILABLE:
         # No Platform.INFRARED enum member on older cores, so forwarded by
@@ -44,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     _LOGGER.debug("Unloading")
-    platforms = [Platform.REMOTE]
+    platforms = [Platform.REMOTE, Platform.SENSOR]
     if INFRARED_PLATFORM_AVAILABLE:
         platforms.append("infrared")
     unloaded = await hass.config_entries.async_unload_platforms(entry, platforms)
