@@ -230,10 +230,10 @@ class TuyaRC(RemoteEntity):
         hass = getattr(self, "hass", None)
         if hass is None:
             return
-        new_data = {**self._entry.data, CONF_HAS_TEMP_HUMIDITY_SENSOR: True}
         entry = self._entry
 
         def _do_update():
+            new_data = {**entry.data, CONF_HAS_TEMP_HUMIDITY_SENSOR: True}
             hass.config_entries.async_update_entry(entry, data=new_data)
 
         hass.loop.call_soon_threadsafe(_do_update)
