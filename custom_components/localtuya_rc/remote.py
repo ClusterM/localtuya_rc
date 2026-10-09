@@ -47,6 +47,7 @@ from homeassistant.components.remote import (
 from homeassistant.helpers.storage import Store
 
 from .rc_encoder import rc_auto_encode, rc_auto_decode
+from .status import dp_query_unsupported
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -454,9 +455,14 @@ class TuyaRC(RemoteEntity):
                 self._device.study_end()
                 status = self._device.status()
             _LOGGER.debug(f"Device status: {status}")
-            self._available = bool(status) and "Error" not in status
-            if self._available and isinstance(status, dict):
-                self._dps.update(status.get("dps") or {})
+            if dp_query_unsupported(status):
+                # Hubs without DP_QUERY never return a DPS dict, but the
+                # decrypted reply proves they are online with the right key.
+                self._available = True
+            else:
+                self._available = bool(status) and "Error" not in status
+                if self._available and isinstance(status, dict):
+                    self._dps.update(status.get("dps") or {})
             if not self._available:
                 _LOGGER.error("Device is not available, status: %s", status)
         except Exception as e:

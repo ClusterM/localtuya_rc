@@ -6,6 +6,7 @@ import tinytuya
 from tinytuya import Contrib, Cloud
 
 from .const import *
+from .status import dp_query_unsupported
 
 from homeassistant import config_entries
 from homeassistant.core import callback
@@ -226,6 +227,11 @@ class LocalTuyaIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "908": "protocol_mismatch",       # ERR_DEVTYPE
             "914": "bad_key_or_version",      # ERR_KEY_OR_VER
         }
+        if dp_query_unsupported(status):
+            # The hub decrypted our request and answered; it simply has no
+            # DP_QUERY. Treat as reachable, the caller still needs a
+            # control_type (auto-detection also relies on status()).
+            return None
         if isinstance(status, dict) and "Error" in status:
             err = str(status.get("Err", "")).strip()
             return err_code_map.get(err, "cannot_connect")
