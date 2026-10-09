@@ -137,6 +137,11 @@ def remote_module(monkeypatch):
         rc_auto_encode=lambda value: value,
         rc_auto_decode=lambda value, **_kwargs: value,
     )
+    _install_module(
+        monkeypatch,
+        f"{PACKAGE_NAME}.status",
+        dp_query_unsupported=lambda _status: False,
+    )
 
     spec = importlib.util.spec_from_file_location(
         f"{PACKAGE_NAME}.remote", REMOTE_PATH
