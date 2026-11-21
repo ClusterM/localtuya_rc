@@ -131,6 +131,7 @@ class TuyaRC(RemoteEntity):
         self._storage = None
         self._codes = {}
         self._available = False
+        self._unavailable_logged = False
         self._dps = {}
 
         self._device = None
@@ -419,6 +420,14 @@ class TuyaRC(RemoteEntity):
         """Turn the device off."""
         raise HomeAssistantError("Turning off is not supported for this device.")
 
+    def _log_unavailable(self, message, *args, **kwargs):
+        """Log the start of an outage as an error; later polls of the same outage only at debug level."""
+        if self._unavailable_logged:
+            _LOGGER.debug(message, *args)
+        else:
+            _LOGGER.error(message, *args, **kwargs)
+            self._unavailable_logged = True
+
     def _update_availibility(self):
         if not self._lock.acquire(blocking=False):
             _LOGGER.debug("Skipping availability update for busy device %s", self._dev_id)
@@ -464,10 +473,12 @@ class TuyaRC(RemoteEntity):
             if self._available and isinstance(status, dict):
                 self._dps.update(status.get("dps") or {})
             if not self._available:
-                _LOGGER.error("Device is not available, status: %s", status)
+                self._log_unavailable("Device %s is not available, status: %s", self._dev_id, status)
         except Exception as e:
             self._available = False
-            _LOGGER.error("Failed to update device, exception %s: %s", type(e), e, exc_info=True)
+            self._log_unavailable(
+                "Failed to update device %s, exception %s: %s", self._dev_id, type(e), e, exc_info=True
+            )
         # If status succeeded but tinytuya could not detect the control_type
         # (e.g. device was offline at the time of construction), force a
         # full re-init on the next poll so detection is retried with a now
@@ -490,6 +501,9 @@ class TuyaRC(RemoteEntity):
             self._persist_has_temp_humidity_sensor()
         if not self._available:
             self._deinit()
+        elif self._unavailable_logged:
+            _LOGGER.info("Device %s is available again", self._dev_id)
+            self._unavailable_logged = False
         _LOGGER.debug("Device %s is available: %s", self._dev_id, self._available)
 
     async def async_update(self):
