@@ -208,8 +208,8 @@ def test_reachable_silent_device_wakes_after_study_end(
 
 @pytest.mark.parametrize(
     "retry_status",
-    [None, _status_error("902"), _status_error("900")],
-    ids=["empty-response", "timeout", "json-error"],
+    [_status_error("902"), _status_error("900")],
+    ids=["timeout", "json-error"],
 )
 def test_silent_device_remains_unavailable_after_one_wake_retry(
     remote_module, retry_status
@@ -222,6 +222,38 @@ def test_silent_device_remains_unavailable_after_one_wake_retry(
     assert remote.available is False
     assert device_class.instance.status_calls == 2
     assert device_class.instance.study_end_calls == 1
+    assert device_class.instance.closed is True
+
+
+def test_device_without_datapoints_stays_available_after_wake_retry(
+    remote_module,
+):
+    """An empty reply means reachable with no datapoints, not offline.
+
+    Some IR blasters expose no datapoints, so status() returns None every
+    time while send_button() works. Home Assistant skips service calls for an
+    unavailable entity, so treating that as offline made the remote unusable.
+    """
+
+    remote, device_class = _make_remote(remote_module, [None, None])
+    remote._update_availibility_locked()
+
+    assert remote.available is True
+    assert device_class.instance.status_calls == 2
+    assert device_class.instance.study_end_calls == 1
+    assert device_class.instance.closed is False
+
+
+def test_device_without_datapoints_needs_a_detected_control_type(remote_module):
+    """An empty reply does not hide a failed control type detection."""
+
+    remote, device_class = _make_remote(
+        remote_module, [None], control_type=0
+    )
+    remote._update_availibility_locked()
+
+    assert remote.available is False
+    assert device_class.instance.study_end_calls == 0
     assert device_class.instance.closed is True
 
 
