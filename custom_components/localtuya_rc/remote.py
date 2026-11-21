@@ -454,7 +454,13 @@ class TuyaRC(RemoteEntity):
                 self._device.study_end()
                 status = self._device.status()
             _LOGGER.debug(f"Device status: {status}")
-            self._available = bool(status) and "Error" not in status
+            # None means the device acknowledged the request with an empty
+            # packet: it is reachable but has no datapoints to report. Some IR
+            # blasters expose none at all, yet send_button() works on the same
+            # connection. An unreachable or misconfigured device does not give
+            # None; tinytuya returns an error dict for it (901, 902, 904, 905,
+            # 914), which still marks the device unavailable.
+            self._available = status is None or (bool(status) and "Error" not in status)
             if self._available and isinstance(status, dict):
                 self._dps.update(status.get("dps") or {})
             if not self._available:
