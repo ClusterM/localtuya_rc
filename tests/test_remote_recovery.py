@@ -331,3 +331,82 @@ def test_requires_tinytuya_timeout_error_support():
     version = tuple(int(part) for part in requirement.split(">=", 1)[1].split("."))
 
     assert version >= (1, 20, 0)
+
+
+def _make_remote_with_answers(remote_module, answers):
+    """Build a remote whose devices share one list of answers across re-inits."""
+
+    class Device:
+        def __init__(self, **_kwargs):
+            self.control_type = 1
+
+        def status(self):
+            return answers.pop(0)
+
+        def study_end(self):
+            pass
+
+        def close(self):
+            pass
+
+    remote_module.Contrib.IRRemoteControlDevice = Device
+    return remote_module.TuyaRC(
+        "Test",
+        "device-id",
+        "127.0.0.1",
+        "local-key",
+        "3.3",
+        control_type=1,
+    )
+
+
+def test_standing_outage_is_logged_once_not_on_every_poll(remote_module, caplog):
+    """An unreachable device logs one error, then debug lines, then one recovery line."""
+    import logging
+
+    remote = _make_remote_with_answers(
+        remote_module, [_status_error("901")] * 3 + [{"dps": {}}]
+    )
+    caplog.set_level(logging.DEBUG, logger=remote_module.__name__)
+
+    for _ in range(3):
+        remote._update_availibility_locked()
+
+    assert remote.available is False
+    errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert len(errors) == 1
+    assert "not available" in errors[0].getMessage()
+    repeats = [
+        r
+        for r in caplog.records
+        if r.levelno == logging.DEBUG and "not available" in r.getMessage()
+    ]
+    assert len(repeats) == 2
+
+    remote._update_availibility_locked()
+
+    assert remote.available is True
+    recovered = [
+        r
+        for r in caplog.records
+        if r.levelno == logging.INFO and "available again" in r.getMessage()
+    ]
+    assert len(recovered) == 1
+    assert len([r for r in caplog.records if r.levelno >= logging.ERROR]) == 1
+
+
+def test_a_second_outage_is_logged_again(remote_module, caplog):
+    """After a recovery the next outage logs its own error."""
+    import logging
+
+    remote = _make_remote_with_answers(
+        remote_module,
+        [_status_error("901"), {"dps": {}}, _status_error("901")],
+    )
+    caplog.set_level(logging.DEBUG, logger=remote_module.__name__)
+
+    for _ in range(3):
+        remote._update_availibility_locked()
+
+    errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert len(errors) == 2
